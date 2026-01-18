@@ -6,9 +6,18 @@ This project demonstrates **real‑world backend engineering**, clean frontend a
 
 ---
 
-## 📸 Project Preview (Add Images Here)
+## 📸 Project Preview 
+<img width="581" height="802" alt="Screenshot 2026-01-18 145452" src="https://github.com/user-attachments/assets/2664ef8f-3085-4920-bb64-f370ac895ae4" />
+<img width="1529" height="715" alt="Screenshot 2026-01-18 145721" src="https://github.com/user-attachments/assets/bb1e6875-441f-4d3a-aa4d-3712d20ba152" />
+<img width="1550" height="592" alt="Screenshot 2026-01-18 145815" src="https://github.com/user-attachments/assets/c96152a0-2b33-40e7-8056-0c86f0a9f2a6" />
+<img width="1489" height="622" alt="Screenshot 2026-01-18 145912" src="https://github.com/user-attachments/assets/ea4256cf-bd8b-4dcf-a1ea-c501531df7f5" />
+<img width="894" height="864" alt="Screenshot 2026-01-18 145933" src="https://github.com/user-attachments/assets/28766241-89d2-4621-9876-2147719ae0e9" />
 
-> *You can add screenshots or GIFs here later*
+
+
+
+
+
 
 ```
 [ Dashboard Screenshot ]
