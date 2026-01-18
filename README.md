@@ -19,13 +19,6 @@ This project demonstrates **real‑world backend engineering**, clean frontend a
 
 
 
-```
-[ Dashboard Screenshot ]
-[ Login / Register Page ]
-[ Attendance Marking Page ]
-[ Analytics Page ]
-```
-
 ---
 
 ## 🚀 Why AttendEase?
