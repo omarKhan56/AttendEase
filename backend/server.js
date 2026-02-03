@@ -24,7 +24,7 @@ app.use('/api/classes', classRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Health check
+//  check
 app.get('/', (req, res) => {
   res.json({ message: 'Attendance System API is running' });
 });

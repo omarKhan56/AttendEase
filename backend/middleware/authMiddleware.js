@@ -50,6 +50,9 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
+  //Bearer is just a type of authorization scheme.
+  //Whoever BEARS (carries) this token is allowed
+  //No username, no password — just the token.
 
   if (!token) {
     return res.status(401).json({ message: 'Not authorized, no token' });
