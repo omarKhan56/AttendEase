@@ -11,25 +11,17 @@ import crypto from 'crypto';
 
 /*What crypto.randomBytes(32) actually does
 
-
  randomBytes
-
-Generates true cryptographic random data
-
-Not predictable
-
-Safe for security usage
+ Generates true cryptographic random data
+ Not predictable
+ Safe for security usage
 
  (32)
-
-Means 32 bytes
-
-1 byte = 8 bits
-
-32 bytes = 256 bits
-
- 256-bit randomness = extremely secure */
-
+ Means 32 bytes
+ 1 byte = 8 bits
+ 32 bytes = 256 bits
+ 256-bit randomness = extremely secure
+*/
 
 /* Why you needed crypto in your QR system
 
@@ -39,10 +31,8 @@ import crypto from 'crypto';
 
 const qrCode = crypto.randomBytes(32).toString('hex');
 
-
-This line is used to create a secure QR value.*/
-
-
+This line is used to create a secure QR value.
+*/
 
 // attendanceController.js – Attendance & QR system
 //Generate QR codes
@@ -51,46 +41,49 @@ This line is used to create a secure QR value.*/
 //Prevent duplicate attendance
 //Role-based attendance history
 
-
 //“By using short-lived QR codes, authenticated users, enrollment validation, and a per-day attendance check at the database level.”
 //“Attendance can only be marked by a logged-in user with a valid JWT token.”
-
-
 
 /*Main Purpose
 
  Securely records student attendance using QR codes
 
 Key Functions
-
-Generate time-bound QR codes (faculty only)
-
-Validate QR sessions and expiry
-
-Ensure student authentication
-
-Prevent duplicate attendance
-
-Verify student enrollment
-
-Provide role-based attendance history
+ Generate time-bound QR codes (faculty only)
+ Validate QR sessions and expiry
+ Ensure student authentication
+ Prevent duplicate attendance
+ Verify student enrollment
+ Provide role-based attendance history
 
 One-line interview summary
-
-“attendanceController implements a secure, QR-based attendance system with anti-proxy and anti-duplicate checks.” */
+ “attendanceController implements a secure, QR-based attendance system with anti-proxy and anti-duplicate checks.”
+*/
 
 export const generateQR = async (req, res) => {
   try {
     const { classId } = req.body;
+
     const classDoc = await Class.findById(classId);
     if (!classDoc) return res.status(404).json({ message: 'Class not found' });
 
+    // Faculty-only QR generation
     if (classDoc.faculty.toString() !== req.user._id.toString())
       return res.status(403).json({ message: 'Not authorized' });
 
+    // 🔥 NEW: Invalidate all previous active QR sessions for this class
+    await QRSession.updateMany(
+      { class: classId, isActive: true },
+      { isActive: false }
+    );
+
+    // Secure QR value
     const qrCode = crypto.randomBytes(32).toString('hex');
+
     const validFrom = new Date();
-    const validUntil = new Date(validFrom.getTime() + parseInt(process.env.QR_EXPIRY_MINUTES) * 60000);
+
+    // 🔥 UPDATED: QR valid for only 10 seconds
+    const validUntil = new Date(validFrom.getTime() + 10 * 1000);
 
     const qrSession = await QRSession.create({
       class: classId,
@@ -100,17 +93,19 @@ export const generateQR = async (req, res) => {
       validUntil
     });
 
-    const qrImage = await QRCode.toDataURL(JSON.stringify({
-      sessionId: qrSession._id,
-      qrCode,
-      classId
-    }));
+    const qrImage = await QRCode.toDataURL(
+      JSON.stringify({
+        sessionId: qrSession._id,
+        qrCode,
+        classId
+      })
+    );
 
     res.json({
       sessionId: qrSession._id,
       qrImage,
       validUntil,
-      expiryMinutes: process.env.QR_EXPIRY_MINUTES
+      expirySeconds: 10
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -122,22 +117,30 @@ export const markAttendance = async (req, res) => {
     const { sessionId, qrCode } = req.body;
     const qrSession = await QRSession.findById(sessionId).populate('class');
 
+    // 🔐 QR must exist and be active
     if (!qrSession || !qrSession.isActive)
-      return res.status(400).json({ message: 'Invalid or expired QR code' });
+      return res.status(400).json({ message: 'QR is invalid or expired' });
 
+    // QR value must match
     if (qrSession.qrCode !== qrCode)
       return res.status(400).json({ message: 'Invalid QR code' });
 
-    if (new Date() > qrSession.validUntil) {
+    const now = new Date();
+
+    // 🔥 NEW: strict 10-second window validation
+    if (now < qrSession.validFrom || now > qrSession.validUntil) {
       qrSession.isActive = false;
       await qrSession.save();
-      return res.status(400).json({ message: 'QR code expired' });
+      return res.status(400).json({ message: 'QR expired' });
     }
 
     const classDoc = await Class.findById(qrSession.class._id);
+
+    // Student must be enrolled
     if (!classDoc.students.includes(req.user._id))
       return res.status(403).json({ message: 'Not enrolled in this class' });
 
+    // Prevent duplicate attendance (per day)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -147,7 +150,8 @@ export const markAttendance = async (req, res) => {
       date: { $gte: today }
     });
 
-    if (existingAttendance) return res.status(400).json({ message: 'Attendance already marked for today' });
+    if (existingAttendance)
+      return res.status(400).json({ message: 'Attendance already marked for today' });
 
     const attendance = await Attendance.create({
       class: qrSession.class._id,
@@ -157,7 +161,11 @@ export const markAttendance = async (req, res) => {
       markedBy: 'qr'
     });
 
-    qrSession.attendees.push({ student: req.user._id, markedAt: new Date() });
+    qrSession.attendees.push({
+      student: req.user._id,
+      markedAt: new Date()
+    });
+
     await qrSession.save();
 
     res.json({ message: 'Attendance marked successfully', attendance });
@@ -169,17 +177,20 @@ export const markAttendance = async (req, res) => {
 // Fixed: use query param instead of optional route param
 export const getAttendanceHistory = async (req, res) => {
   try {
-    const classId = req.query.classId; // optional
+    const classId = req.query.classId;
     let query = {};
 
     if (req.user.role === 'student') {
       query = { student: req.user._id };
       if (classId) query.class = classId;
     } else if (req.user.role === 'faculty') {
-      if (!classId) return res.status(400).json({ message: 'classId is required for faculty' });
+      if (!classId)
+        return res.status(400).json({ message: 'classId is required for faculty' });
+
       const classDoc = await Class.findById(classId);
       if (!classDoc || classDoc.faculty.toString() !== req.user._id.toString())
         return res.status(403).json({ message: 'Not authorized' });
+
       query.class = classId;
     } else if (classId) {
       query.class = classId;

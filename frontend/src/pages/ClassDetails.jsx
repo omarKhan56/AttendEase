@@ -1,31 +1,42 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QrCode, Users, Calendar, BarChart3, UserPlus } from 'lucide-react';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
-
 
 // What does this component do?
 // This component displays detailed information about a specific class, including its name, code, department, semester, schedule, and enrolled students.
 // It allows faculty members to generate a QR code for attendance marking and provides links to view analytics and enroll students.
 // It fetches class details from the backend API based on the class ID from the URL parameters.
 
-
 const ClassDetails = () => {
   const { id } = useParams();
   const { user } = useContext(AuthContext);
+
   const [classData, setClassData] = useState(null);
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
+  // 🔥 NEW: reference to store interval ID
+  const qrIntervalRef = useRef(null);
+
   useEffect(() => {
     fetchClassDetails();
+
+    // Cleanup interval when component unmounts
+    return () => {
+      if (qrIntervalRef.current) {
+        clearInterval(qrIntervalRef.current);
+      }
+    };
   }, [id]);
 
   const fetchClassDetails = async () => {
     try {
-      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/classes`);
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_API_URL}/classes`
+      );
       const foundClass = data.find(cls => cls._id === id);
       setClassData(foundClass);
     } catch (error) {
@@ -35,24 +46,48 @@ const ClassDetails = () => {
     }
   };
 
+  // Generates QR ONCE
   const generateQR = async () => {
-    setGenerating(true);
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/attendance/generate-qr`, {
-        classId: id
-      });
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_API_URL}/attendance/generate-qr`,
+        { classId: id }
+      );
       setQrData(data);
-      
-      // Auto-hide QR after expiry
-      setTimeout(() => {
-        setQrData(null);
-      }, data.expiryMinutes * 60 * 1000);
     } catch (error) {
       console.error('Error generating QR:', error);
       alert(error.response?.data?.message || 'Failed to generate QR code');
-    } finally {
-      setGenerating(false);
+      stopAutoQR();
     }
+  };
+
+  // 🔁 NEW: Start auto-regenerating QR every 10 seconds
+  const startAutoQR = async () => {
+    setGenerating(true);
+
+    // Generate immediately
+    await generateQR();
+
+    // Clear any existing interval
+    if (qrIntervalRef.current) {
+      clearInterval(qrIntervalRef.current);
+    }
+
+    // Generate new QR every 10 seconds
+    qrIntervalRef.current = setInterval(() => {
+      generateQR();
+    }, 10 * 1000);
+
+    setGenerating(false);
+  };
+
+  // ⛔ NEW: Stop QR regeneration
+  const stopAutoQR = () => {
+    if (qrIntervalRef.current) {
+      clearInterval(qrIntervalRef.current);
+      qrIntervalRef.current = null;
+    }
+    setQrData(null);
   };
 
   if (loading) {
@@ -77,35 +112,36 @@ const ClassDetails = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
         <div className="flex justify-between items-start mb-6">
-  <div>
-    <h1 className="text-3xl font-bold text-gray-900 mb-2">{classData.name}</h1>
-    <p className="text-gray-600">Class Code: {classData.code}</p>
-    {classData.department && (
-      <p className="text-sm text-gray-500">
-        {classData.department} • Semester {classData.semester}
-      </p>
-    )}
-  </div>
-  
-  <div className="flex gap-3">
-    <Link
-      to={`/analytics?classId=${id}`}
-      className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-    >
-      <BarChart3 className="h-5 w-5 mr-2" />
-      View Analytics
-    </Link>
-    
-    <Link
-      to={`/classes/${id}/enroll`}
-      className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-    >
-      <UserPlus className="h-5 w-5 mr-2" />
-      Enroll Students
-    </Link>
-  </div>
-</div>
-    
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {classData.name}
+            </h1>
+            <p className="text-gray-600">Class Code: {classData.code}</p>
+            {classData.department && (
+              <p className="text-sm text-gray-500">
+                {classData.department} • Semester {classData.semester}
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-3">
+            <Link
+              to={`/analytics?classId=${id}`}
+              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            >
+              <BarChart3 className="h-5 w-5 mr-2" />
+              View Analytics
+            </Link>
+
+            <Link
+              to={`/classes/${id}/enroll`}
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            >
+              <UserPlus className="h-5 w-5 mr-2" />
+              Enroll Students
+            </Link>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="p-4 bg-blue-50 rounded-lg">
@@ -113,11 +149,13 @@ const ClassDetails = () => {
               <Users className="h-6 w-6 text-blue-600 mr-2" />
               <div>
                 <p className="text-sm text-gray-600">Total Students</p>
-                <p className="text-2xl font-bold text-gray-900">{classData.students?.length || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {classData.students?.length || 0}
+                </p>
               </div>
             </div>
           </div>
-          
+
           <div className="p-4 bg-green-50 rounded-lg">
             <div className="flex items-center">
               <Calendar className="h-6 w-6 text-green-600 mr-2" />
@@ -129,7 +167,7 @@ const ClassDetails = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="p-4 bg-purple-50 rounded-lg">
             <div className="flex items-center">
               <QrCode className="h-6 w-6 text-purple-600 mr-2" />
@@ -143,39 +181,51 @@ const ClassDetails = () => {
           </div>
         </div>
 
+        {/* Attendance management for faculty */}
         {user.role === 'faculty' && (
           <div className="mt-6 pt-6 border-t">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance Management</h3>
-            
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Attendance Management
+            </h3>
+
             {!qrData ? (
               <button
-                onClick={generateQR}
+                onClick={startAutoQR}
                 disabled={generating}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center"
               >
                 <QrCode className="h-5 w-5 mr-2" />
-                {generating ? 'Generating...' : 'Generate QR Code for Today'}
+                {generating
+                  ? 'Starting QR...'
+                  : 'Start QR (Auto refresh every 10 sec)'}
               </button>
             ) : (
               <div className="bg-gray-50 rounded-lg p-6 text-center">
-                <h4 className="text-xl font-bold text-gray-900 mb-4">Attendance QR Code</h4>
+                <h4 className="text-xl font-bold text-gray-900 mb-4">
+                  Attendance QR Code
+                </h4>
+
                 <img
                   src={qrData.qrImage}
                   alt="Attendance QR Code"
                   className="mx-auto mb-4 border-4 border-blue-600 rounded-lg"
                   style={{ maxWidth: '300px' }}
                 />
+
                 <p className="text-sm text-gray-600 mb-2">
-                  Students can scan this code to mark their attendance
+                  QR regenerates automatically every <b>10 seconds</b>
                 </p>
+
                 <p className="text-xs text-red-600 font-medium">
-                  Expires in {qrData.expiryMinutes} minutes (at {new Date(qrData.validUntil).toLocaleTimeString()})
+                  Valid till:{' '}
+                  {new Date(qrData.validUntil).toLocaleTimeString()}
                 </p>
+
                 <button
-                  onClick={() => setQrData(null)}
+                  onClick={stopAutoQR}
                   className="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
                 >
-                  Close QR Code
+                  Stop QR
                 </button>
               </div>
             )}
@@ -183,23 +233,34 @@ const ClassDetails = () => {
         )}
       </div>
 
+      {/* Schedule section */}
       {classData.schedule && classData.schedule.length > 0 && (
         <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Class Schedule</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-4">
+            Class Schedule
+          </h3>
           <div className="space-y-2">
             {classData.schedule.map((sch, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <span className="font-medium text-gray-900">{sch.day}</span>
-                <span className="text-gray-600">{sch.startTime} - {sch.endTime}</span>
+                <span className="text-gray-600">
+                  {sch.startTime} - {sch.endTime}
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
+      {/* Students list */}
       {classData.students && classData.students.length > 0 && (
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Enrolled Students</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-4">
+            Enrolled Students
+          </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -213,7 +274,7 @@ const ClassDetails = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {classData.students.map((student) => (
+                {classData.students.map(student => (
                   <tr key={student._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {student.name}

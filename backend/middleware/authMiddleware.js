@@ -59,13 +59,15 @@ export const protect = async (req, res, next) => {
   }
 };
 
-export const authorize = (...roles) => {
+export const authorize = (...roles) => { //👉 It allows you to pass any number of roles to the middleware.
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ 
         message: `User role '${req.user.role}' is not authorized to access this route` 
       });
     }
-    next();
+    next(); 
+    //...roles = Collect all arguments into an array called roles
+    //authorize('admin', 'faculty') => roles = ['admin', 'faculty']
   };
 };

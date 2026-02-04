@@ -7,7 +7,8 @@ import classRoutes from './routes/classRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 
-dotenv.config();
+dotenv.config();  // Load environment variables from .env file
+                  //Keeps secrets (DB URI, JWT secret) out of codebase
 
 const app = express();
 

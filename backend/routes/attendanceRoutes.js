@@ -6,8 +6,8 @@ import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/generate-qr', protect, authorize('faculty'), generateQR);
-router.post('/mark', protect, authorize('student'), markAttendance);
+router.post('/generate-qr', protect, authorize('faculty'), generateQR); // Only faculty can generate QR codes
+router.post('/mark', protect, authorize('student'), markAttendance); // Only students can mark attendance
 
 // Use query param instead of optional path param
 // GET /history?classId=123  or  /history
