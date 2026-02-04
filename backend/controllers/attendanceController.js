@@ -62,7 +62,7 @@ One-line interview summary
 
 export const generateQR = async (req, res) => {
   try {
-    const { classId } = req.body;
+    const { classId } = req.body;  //Extracts the class ID from the request sent by frontend.
 
     const classDoc = await Class.findById(classId);
     if (!classDoc) return res.status(404).json({ message: 'Class not found' });

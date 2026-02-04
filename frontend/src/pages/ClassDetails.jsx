@@ -18,8 +18,18 @@ const ClassDetails = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  // 🔥 NEW: reference to store interval ID
-  const qrIntervalRef = useRef(null);
+ 
+  const qrIntervalRef = useRef(null);  //we use useRef instead of useState because we don't want re-renders
+
+  /* React re-renders components often.
+  If you store an interval ID in a normal variable, it gets lost on re-render.
+   useRef solves this.*/
+
+
+
+   /* I used setInterval to regenerate the QR every 10 seconds, 
+   stored the interval in useRef, 
+   and cleaned it up properly using useEffect to avoid memory leaks. */
 
   useEffect(() => {
     fetchClassDetails();
@@ -31,6 +41,8 @@ const ClassDetails = () => {
       }
     };
   }, [id]);
+
+  //An interval ID is a unique identifier (a number or object) that JavaScript returns when you start a repeating timer using setInterval(). You can use this ID to stop the timer later with clearInterval().
 
   const fetchClassDetails = async () => {
     try {
@@ -61,11 +73,11 @@ const ClassDetails = () => {
     }
   };
 
-  // 🔁 NEW: Start auto-regenerating QR every 10 seconds
+
   const startAutoQR = async () => {
     setGenerating(true);
 
-    // Generate immediately
+    
     await generateQR();
 
     // Clear any existing interval
