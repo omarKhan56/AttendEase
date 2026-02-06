@@ -68,7 +68,7 @@ export const generateQR = async (req, res) => {
     if (!classDoc) return res.status(404).json({ message: 'Class not found' });
 
     // Faculty-only QR generation
-    if (classDoc.faculty.toString() !== req.user._id.toString())
+    if (classDoc.faculty.toString() !== req.user._id.toString()) //Only the faculty assigned to this class can generate QR codes.
       return res.status(403).json({ message: 'Not authorized' });
 
     // 🔥 NEW: Invalidate all previous active QR sessions for this class
@@ -76,6 +76,10 @@ export const generateQR = async (req, res) => {
       { class: classId, isActive: true },
       { isActive: false }
     );
+
+    // 🔥 NEW: Define fixed 15-minute attendance window
+    const sessionStart = new Date();
+    const sessionEndsAt = new Date(sessionStart.getTime() + 15 * 60 * 1000); // 15 minutes
 
     // Secure QR value
     const qrCode = crypto.randomBytes(32).toString('hex');
@@ -85,12 +89,27 @@ export const generateQR = async (req, res) => {
     // 🔥 UPDATED: QR valid for only 10 seconds
     const validUntil = new Date(validFrom.getTime() + 10 * 1000);
 
-    const qrSession = await QRSession.create({
+    const qrSession = await QRSession.create({  /* Stores QR metadata in DB:
+
+                                                Which class
+
+                                                Who created it 
+
+                                                Validity window
+
+                                                  This record is later used to validate attendance.*/
+                                                   
       class: classId,
       qrCode,
       createdBy: req.user._id,
+
+      // 🔥 ADDED: fixed session window
+      sessionStart,
+      sessionEndsAt,
+
       validFrom,
-      validUntil
+      validUntil,
+      isActive: true
     });
 
     const qrImage = await QRCode.toDataURL(
@@ -105,6 +124,7 @@ export const generateQR = async (req, res) => {
       sessionId: qrSession._id,
       qrImage,
       validUntil,
+      sessionEndsAt, // 🔥 frontend uses this to stop QR refresh
       expirySeconds: 10
     });
   } catch (error) {
@@ -121,17 +141,22 @@ export const markAttendance = async (req, res) => {
     if (!qrSession || !qrSession.isActive)
       return res.status(400).json({ message: 'QR is invalid or expired' });
 
+    const now = new Date();
+
+    // 🔥 NEW: Check fixed 15-minute attendance window
+    if (now < qrSession.sessionStart || now > qrSession.sessionEndsAt) {
+      qrSession.isActive = false;
+      await qrSession.save();
+      return res.status(400).json({ message: 'Attendance session expired' });
+    }
+
     // QR value must match
     if (qrSession.qrCode !== qrCode)
       return res.status(400).json({ message: 'Invalid QR code' });
 
-    const now = new Date();
-
-    // 🔥 NEW: strict 10-second window validation
+    // 🔥 Strict 10-second QR validation
     if (now < qrSession.validFrom || now > qrSession.validUntil) {
-      qrSession.isActive = false;
-      await qrSession.save();
-      return res.status(400).json({ message: 'QR expired' });
+      return res.status(400).json({ message: 'QR expired, please scan new QR' });
     }
 
     const classDoc = await Class.findById(qrSession.class._id);

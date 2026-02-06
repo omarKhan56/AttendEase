@@ -18,26 +18,27 @@ const ClassDetails = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
- 
-  const qrIntervalRef = useRef(null);  //we use useRef instead of useState because we don't want re-renders
+  const qrIntervalRef = useRef(null); // stores 10-second QR interval
+  const qrTimeoutRef = useRef(null);  // stores 15-minute session timeout
 
   /* React re-renders components often.
-  If you store an interval ID in a normal variable, it gets lost on re-render.
-   useRef solves this.*/
+     If you store an interval ID in a normal variable, it gets lost on re-render.
+     useRef solves this. */
 
-
-
-   /* I used setInterval to regenerate the QR every 10 seconds, 
-   stored the interval in useRef, 
-   and cleaned it up properly using useEffect to avoid memory leaks. */
+  /* I used setInterval to regenerate the QR every 10 seconds,
+     stored the interval in useRef,
+     and cleaned it up properly using useEffect to avoid memory leaks. */
 
   useEffect(() => {
     fetchClassDetails();
 
-    // Cleanup interval when component unmounts
+    // Cleanup interval & timeout when component unmounts
     return () => {
       if (qrIntervalRef.current) {
         clearInterval(qrIntervalRef.current);
+      }
+      if (qrTimeoutRef.current) {
+        clearTimeout(qrTimeoutRef.current);
       }
     };
   }, [id]);
@@ -73,32 +74,49 @@ const ClassDetails = () => {
     }
   };
 
-
+  // Starts a FIXED 15-minute attendance session
   const startAutoQR = async () => {
     setGenerating(true);
 
-    
+    // Generate first QR immediately
     await generateQR();
 
-    // Clear any existing interval
+    // Clear old interval if exists
     if (qrIntervalRef.current) {
       clearInterval(qrIntervalRef.current);
     }
 
-    // Generate new QR every 10 seconds
+    // Clear old timeout if exists
+    if (qrTimeoutRef.current) {
+      clearTimeout(qrTimeoutRef.current);
+    }
+
+    // 🔁 Regenerate QR every 10 seconds
     qrIntervalRef.current = setInterval(() => {
       generateQR();
     }, 10 * 1000);
 
+    // ⏱️ Stop QR generation automatically after 15 minutes
+    qrTimeoutRef.current = setTimeout(() => {
+      stopAutoQR();
+      alert('Attendance session ended (15 minutes completed)');
+    }, 15 * 60 * 1000);
+
     setGenerating(false);
   };
 
-  // ⛔ NEW: Stop QR regeneration
+  // Stops QR regeneration manually or automatically
   const stopAutoQR = () => {
     if (qrIntervalRef.current) {
       clearInterval(qrIntervalRef.current);
       qrIntervalRef.current = null;
     }
+
+    if (qrTimeoutRef.current) {
+      clearTimeout(qrTimeoutRef.current);
+      qrTimeoutRef.current = null;
+    }
+
     setQrData(null);
   };
 
@@ -209,7 +227,7 @@ const ClassDetails = () => {
                 <QrCode className="h-5 w-5 mr-2" />
                 {generating
                   ? 'Starting QR...'
-                  : 'Start QR (Auto refresh every 10 sec)'}
+                  : 'Start QR (15 min session, refresh every 10 sec)'}
               </button>
             ) : (
               <div className="bg-gray-50 rounded-lg p-6 text-center">
