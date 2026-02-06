@@ -14,6 +14,13 @@ router.get('/student', protect, getStudentAnalytics);
 
 export default router;
 
+// A stateful API remembers the client’s state (session data) between multiple requests.
+//Client sends a request → server knows who you are without re-authenticating every time
+
+
+//A stateless API does NOT remember anything about the client.
+//Every request is independent and must contain all required info.
+
 
 /*“The routes folder defines the API endpoints and decides which middleware and controller 
 should handle each request.” 
