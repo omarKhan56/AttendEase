@@ -154,7 +154,7 @@ This structure makes the project:
 
 ## ⚙️ Environment Setup
 
-### Backend `.env`
+### Backend `.env` 
 
 ```env
 PORT=5000
