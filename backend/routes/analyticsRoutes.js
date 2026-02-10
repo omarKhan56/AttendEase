@@ -22,6 +22,12 @@ export default router;
 //Every request is independent and must contain all required info.
 
 
+
+
+//AttendEase is based on a stateless API design, using JWT for authentication.
+
+
+
 /*“The routes folder defines the API endpoints and decides which middleware and controller 
 should handle each request.” 
  They only connect things together*/

@@ -39,7 +39,7 @@ Fetch user profile and all users (role-based)*/
 
 
 
-
+// Generate JWT token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d'
