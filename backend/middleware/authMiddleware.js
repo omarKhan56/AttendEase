@@ -1,7 +1,7 @@
 //authMiddleware.js
 
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import User from '../models/User.js'; //Used to fetch user data after token is verified 
 
 
 /*Without middleware:
@@ -43,7 +43,7 @@ export const protect = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET); //Verifies the token using the secret key. If the token is invalid or expired, it will throw an error.
       req.user = await User.findById(decoded.id).select('-password');
       next();
     } catch (error) {
