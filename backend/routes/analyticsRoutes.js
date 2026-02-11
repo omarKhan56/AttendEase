@@ -1,18 +1,18 @@
 //analyticsRoutes.js
 
 import express from 'express';
-import { getClassAnalytics, getStudentAnalytics } from '../controllers/analyticsController.js';
+import { getClassAnalytics, getStudentAnalytics } from '../controllers/analyticsController.js'; //These are controller functions
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.get('/class/:classId', protect, authorize('faculty', 'admin'), getClassAnalytics);
+router.get('/class/:classId', protect, authorize('faculty', 'admin'), getClassAnalytics); // Only faculty and admin can access class analytics
 
 // Use query param instead of optional path param
 // GET /student?studentId=123  or  /student
 router.get('/student', protect, getStudentAnalytics);
 
-export default router;
+export default router; 
 
 // A stateful API remembers the client’s state (session data) between multiple requests.
 //Client sends a request → server knows who you are without re-authenticating every time

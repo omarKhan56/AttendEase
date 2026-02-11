@@ -33,7 +33,7 @@ One-line interview summary
 
 export const getClassAnalytics = async (req, res) => {
   try {
-    const { classId } = req.params;
+    const { classId } = req.params; 
     const classDoc = await Class.findById(classId).populate('students');
     if (!classDoc) return res.status(404).json({ message: 'Class not found' });
 
