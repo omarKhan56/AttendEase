@@ -1,3 +1,5 @@
+//frontend/src/pages/Login.jsx
+
 import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { QrCode } from 'lucide-react';

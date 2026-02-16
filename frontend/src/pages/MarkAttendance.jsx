@@ -1,3 +1,5 @@
+//frontend/src/pages/MarkAttendance.jsx
+
 import { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import axios from 'axios'; // to send HTTP requests and send attendance data to backend

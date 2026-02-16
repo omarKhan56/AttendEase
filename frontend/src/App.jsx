@@ -15,13 +15,16 @@ import AttendanceHistory from './pages/AttendanceHistory';
 import Analytics from './pages/Analytics';
 import Profile from './pages/Profile';
 
+
+{/* {/* Wrap the entire app in Router to enable routing */} 
+
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <AuthProvider> {/*AuthProvider is a global place that stores login information and shares it with the entire app. */}
+      <Router> {/* Wrap the entire app in Router to enable routing */}
         <div className="min-h-screen bg-gray-50">
-          <Navbar />
-          <Routes>
+          <Navbar /> {/* Navbar is outside of Routes to show on all pages */}
+          <Routes> {/* Define all routes here */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             

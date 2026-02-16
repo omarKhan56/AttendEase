@@ -1,3 +1,5 @@
+
+//frontend/src/pages/Register.jsx
 import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { QrCode } from 'lucide-react';
@@ -13,6 +15,14 @@ import AuthContext from '../context/AuthContext';
 // The useContext hook is used to access the AuthContext, which provides the register function to handle user registration.
 // This allows the component to interact with the global authentication state and perform registration without prop drilling.
 
+
+//useContext = Access shared data without passing props.Used in AuthProvider to share login info across the app. Here, it gives access to the register function for user registration.
+
+
+// useRef – REMEMBER WITHOUT RE-RENDER.. Store a value that does NOT cause re-render.
+// useState – REMEMBER WITH RE-RENDER..
+// useContext – REMEMBER WITH RE-RENDER + GLOBAL ACCESS..
+//  useEffect – SIDE EFFECTS (fetching data, subscriptions, timers) without blocking rendering. 
 const Register = () => {
   const [formData, setFormData] = useState({
     name: '',

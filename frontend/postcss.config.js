@@ -4,3 +4,6 @@ export default {
     autoprefixer: {},
   },
 };
+
+
+//frontend/postcss.config.js

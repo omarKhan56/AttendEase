@@ -1,3 +1,5 @@
+//frontend/src/pages/ClassDetails.jsx
+
 import { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QrCode, Users, Calendar, BarChart3, UserPlus } from 'lucide-react';

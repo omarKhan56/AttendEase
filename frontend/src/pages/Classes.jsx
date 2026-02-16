@@ -1,3 +1,5 @@
+//frontend/src/pages/Classes.jsx
+
 import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, BookOpen, Users, Calendar } from 'lucide-react';

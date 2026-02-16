@@ -10,4 +10,6 @@ export default {
   plugins: [],
 };
 
+//frontend/tailwind.config.js
+
 

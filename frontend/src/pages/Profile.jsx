@@ -1,4 +1,4 @@
-// src/pages/Profile.jsx
+// frontend/src/pages/Profile.jsx
 import { useContext } from 'react';
 import { User, Mail, Award, Calendar } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
