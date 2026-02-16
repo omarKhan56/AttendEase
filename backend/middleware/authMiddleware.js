@@ -42,10 +42,10 @@ export const protect = async (req, res, next) => {
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
-      token = req.headers.authorization.split(' ')[1];
+      token = req.headers.authorization.split(' ')[1]; //[1]= The actual token part after 'Bearer'
       const decoded = jwt.verify(token, process.env.JWT_SECRET); //Verifies the token using the secret key. If the token is invalid or expired, it will throw an error.
       req.user = await User.findById(decoded.id).select('-password');
-      next();
+      next(); //If token is valid, it fetches the user from the database and attaches it to the request object (req.user) for use in later middleware or controllers. Then it calls next() to pass control to the next middleware or controller.
     } catch (error) {
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
@@ -61,7 +61,7 @@ export const protect = async (req, res, next) => {
 
 export const authorize = (...roles) => { //👉 It allows you to pass any number of roles to the middleware.
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role)) { 
       return res.status(403).json({ 
         message: `User role '${req.user.role}' is not authorized to access this route` 
       });

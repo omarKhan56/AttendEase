@@ -1,4 +1,4 @@
-//attendenceController.js
+//backend/controllers/attendanceController.js
 
 import QRSession from '../models/QRSession.js';
 import Attendance from '../models/Attendance.js';

@@ -1,4 +1,4 @@
-//attendenceRoutes.js
+//backend/routes/attendanceRoutes.js
 
 import express from 'express';
 import { generateQR, markAttendance, getAttendanceHistory } from '../controllers/attendanceController.js';

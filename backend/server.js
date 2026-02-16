@@ -1,3 +1,4 @@
+//backend/server.js
 import express from 'express'; 
 import dotenv from 'dotenv'; // Load environment variables from .env file
 import cors from 'cors'; // Enable CORS for cross-origin requests (frontend-backend communication)

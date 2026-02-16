@@ -1,4 +1,4 @@
-//analyticsRoutes.js
+//backend/routes/analyticsRoutes.js
 
 import express from 'express';
 import { getClassAnalytics, getStudentAnalytics } from '../controllers/analyticsController.js'; //These are controller functions

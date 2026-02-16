@@ -1,4 +1,4 @@
-//qrSessionSchema.js
+//backend/models/QRSession.js
 import mongoose from 'mongoose';
 
 const qrSessionSchema = new mongoose.Schema({

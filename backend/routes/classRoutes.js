@@ -1,4 +1,4 @@
-//classRoutes.js
+//backend/routes/classRoutes.js
 
 import express from 'express';
 import { createClass, getClasses, enrollStudent } from '../controllers/classController.js';
