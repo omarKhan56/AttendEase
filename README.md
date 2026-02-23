@@ -1,6 +1,6 @@
 # 🎓 AttendEase – Smart Attendance Management & Analytics System
 
-> **AttendEase** is a full‑stack, production‑ready web application designed to modernize and automate attendance management in educational institutions. It replaces manual, error‑prone attendance processes with a **secure, scalable, and analytics‑driven digital solution** built using the **MERN stack**.
+> **AttendEase** is a full‑stack, production‑ready web application designed to modernize and automate attendance management in educational institutions. It replaces manual, error‑prone  attendance processes with a **secure, scalable, and analytics‑driven digital solution** built using the **MERN stack**.
 
 This project demonstrates **real‑world backend engineering**, clean frontend architecture, and practical implementation of authentication, authorization, and data modeling.
 
