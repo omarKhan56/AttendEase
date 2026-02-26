@@ -28,11 +28,11 @@ authorize */
 //authorize Middleware – “Is the user allowed?”
 
 
-/* ❓ What happens if middleware check fails?
+/*  What happens if middleware check fails?
 
-👉 The request is STOPPED immediately.
-👉 Controller is NOT executed.
-👉 A response is sent back with an error status. */
+ The request is STOPPED immediately.
+ Controller is NOT executed.
+ A response is sent back with an error status. */
 
 
 /* “If middleware validation fails, it sends an error response immediately 
