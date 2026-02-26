@@ -1,4 +1,4 @@
-//classController.js
+//backend/controllers/classController.js
 import Class from '../models/Class.js';
 import User from '../models/User.js';
 

@@ -1,4 +1,4 @@
-//authMiddleware.js
+//backend/middleware/authMiddleware.js
 
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js'; //Used to fetch user data after token is verified 

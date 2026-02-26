@@ -1,4 +1,4 @@
-//analyticsController.js
+//backend/controllers/analyticsController.js
 
 import Attendance from '../models/Attendance.js';
 import Class from '../models/Class.js';
