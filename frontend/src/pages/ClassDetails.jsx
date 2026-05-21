@@ -1,10 +1,10 @@
 //frontend/src/pages/ClassDetails.jsx
 
-import { useState, useEffect, useContext, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { QrCode, Users, Calendar, BarChart3, UserPlus } from 'lucide-react';
-import axios from 'axios';
-import AuthContext from '../context/AuthContext';
+import { useState, useEffect, useContext, useRef } from "react";
+import { useParams, Link } from "react-router-dom";
+import { QrCode, Users, Calendar, BarChart3, UserPlus } from "lucide-react";
+import axios from "axios";
+import AuthContext from "../context/AuthContext";
 
 // What does this component do?
 // This component displays detailed information about a specific class, including its name, code, department, semester, schedule, and enrolled students.
@@ -21,7 +21,7 @@ const ClassDetails = () => {
   const [generating, setGenerating] = useState(false);
 
   const qrIntervalRef = useRef(null); // stores 10-second QR interval
-  const qrTimeoutRef = useRef(null);  // stores 15-minute session timeout
+  const qrTimeoutRef = useRef(null); // stores 15-minute session timeout
 
   /* React re-renders components often.
      If you store an interval ID in a normal variable, it gets lost on re-render.
@@ -50,12 +50,12 @@ const ClassDetails = () => {
   const fetchClassDetails = async () => {
     try {
       const { data } = await axios.get(
-        `${import.meta.env.VITE_API_URL}/classes`
+        `${import.meta.env.VITE_API_URL}/classes`,
       );
-      const foundClass = data.find(cls => cls._id === id);
+      const foundClass = data.classes.find((cls) => cls._id === id);
       setClassData(foundClass);
     } catch (error) {
-      console.error('Error fetching class details:', error);
+      console.error("Error fetching class details:", error);
     } finally {
       setLoading(false);
     }
@@ -66,12 +66,12 @@ const ClassDetails = () => {
     try {
       const { data } = await axios.post(
         `${import.meta.env.VITE_API_URL}/attendance/generate-qr`,
-        { classId: id }
+        { classId: id },
       );
       setQrData(data);
     } catch (error) {
-      console.error('Error generating QR:', error);
-      alert(error.response?.data?.message || 'Failed to generate QR code');
+      console.error("Error generating QR:", error);
+      alert(error.response?.data?.message || "Failed to generate QR code");
       stopAutoQR();
     }
   };
@@ -99,10 +99,13 @@ const ClassDetails = () => {
     }, 10 * 1000);
 
     // ⏱️ Stop QR generation automatically after 15 minutes
-    qrTimeoutRef.current = setTimeout(() => {
-      stopAutoQR();
-      alert('Attendance session ended (15 minutes completed)');
-    }, 15 * 60 * 1000);
+    qrTimeoutRef.current = setTimeout(
+      () => {
+        stopAutoQR();
+        alert("Attendance session ended (15 minutes completed)");
+      },
+      15 * 60 * 1000,
+    );
 
     setGenerating(false);
   };
@@ -206,7 +209,7 @@ const ClassDetails = () => {
               <div>
                 <p className="text-sm text-gray-600">Status</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {classData.isActive ? 'Active' : 'Inactive'}
+                  {classData.isActive ? "Active" : "Inactive"}
                 </p>
               </div>
             </div>
@@ -214,7 +217,7 @@ const ClassDetails = () => {
         </div>
 
         {/* Attendance management for faculty */}
-        {user.role === 'faculty' && (
+        {user.role === "faculty" && (
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Attendance Management
@@ -228,8 +231,8 @@ const ClassDetails = () => {
               >
                 <QrCode className="h-5 w-5 mr-2" />
                 {generating
-                  ? 'Starting QR...'
-                  : 'Start QR (15 min session, refresh every 10 sec)'}
+                  ? "Starting QR..."
+                  : "Start QR (15 min session, refresh every 10 sec)"}
               </button>
             ) : (
               <div className="bg-gray-50 rounded-lg p-6 text-center">
@@ -241,7 +244,7 @@ const ClassDetails = () => {
                   src={qrData.qrImage}
                   alt="Attendance QR Code"
                   className="mx-auto mb-4 border-4 border-blue-600 rounded-lg"
-                  style={{ maxWidth: '300px' }}
+                  style={{ maxWidth: "300px" }}
                 />
 
                 <p className="text-sm text-gray-600 mb-2">
@@ -249,8 +252,7 @@ const ClassDetails = () => {
                 </p>
 
                 <p className="text-xs text-red-600 font-medium">
-                  Valid till:{' '}
-                  {new Date(qrData.validUntil).toLocaleTimeString()}
+                  Valid till: {new Date(qrData.validUntil).toLocaleTimeString()}
                 </p>
 
                 <button
@@ -306,7 +308,7 @@ const ClassDetails = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {classData.students.map(student => (
+                {classData.students.map((student) => (
                   <tr key={student._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {student.name}
