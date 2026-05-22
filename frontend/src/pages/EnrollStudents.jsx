@@ -90,6 +90,9 @@ const EnrollStudents = () => {
       setLoading(false);
     }
   };
+  // pagination concept here
+  // we fetch all students but only show a subset based on the current page
+  // the backend should support pagination for the users endpoint to make this efficient
 
   const toggleStudentSelection = (studentId) => {
 
