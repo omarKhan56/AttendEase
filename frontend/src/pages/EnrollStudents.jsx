@@ -12,6 +12,10 @@ import {
 
 import axios from 'axios';
 
+//Total Pages Calculation
+//const total = await Class.countDocuments();
+//const totalPages = Math.ceil(total / 10); // assuming 10 items per page
+
 const EnrollStudents = () => {
 
   const { classId } = useParams();
