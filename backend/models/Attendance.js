@@ -45,13 +45,10 @@ attendanceSchema.index({ class: 1 });
 // Fast student attendance lookup
 attendanceSchema.index({ student: 1 });
 
-// Fast date filtering
 attendanceSchema.index({ date: 1 });
 
-// SUPER IMPORTANT compound index
 attendanceSchema.index({ class: 1, student: 1 });
 
-// Analytics optimization
 attendanceSchema.index({ class: 1, date: 1 });
 
 /* ============================================ */
