@@ -1,44 +1,79 @@
 //backend/models/Class.js
+
 import mongoose from 'mongoose';
 
-const classSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
-  },
-  code: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  faculty: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  department: String,
-  semester: Number,
-  schedule: [{
-    day: {
+const classSchema = new mongoose.Schema(
+  {
+    name: {
       type: String,
-      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      required: true
     },
-    startTime: String,
-    endTime: String
-  }],
-  students: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  academicYear: String,
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
 
-export default mongoose.model('Class', classSchema);
+    code: {
+      type: String,
+      required: true,
+      unique: true
+    },
+
+    faculty: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+
+    students: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
+
+    department: {
+      type: String
+    },
+
+    semester: {
+      type: Number
+    },
+
+    academicYear: {
+      type: String
+    },
+
+    schedule: [
+      {
+        day: String,
+        startTime: String,
+        endTime: String
+      }
+    ],
+
+    isActive: {
+      type: Boolean,
+      default: true
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+/* ================= INDEXES ================= */
+
+// Fast class code lookup
+classSchema.index({ code: 1 });
+
+// Fast faculty class loading
+classSchema.index({ faculty: 1 });
+
+// Fast department filtering
+classSchema.index({ department: 1 });
+
+// Fast semester filtering
+classSchema.index({ semester: 1 });
+
+/* ============================================ */
+
+const Class = mongoose.model('Class', classSchema);
+
+export default Class;

@@ -1,4 +1,6 @@
 //backend/models/User.js
+//backend/models/User.js
+
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -14,8 +16,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      lowercase: true,
-      trim: true
+      trim: true,
+      lowercase: true
     },
 
     password: {
@@ -30,17 +32,14 @@ const userSchema = new mongoose.Schema(
       default: 'student'
     },
 
-    // ✅ Only present for students
     studentId: {
       type: String,
-      unique: true,
       sparse: true,
-      trim: true
+      unique: true
     },
 
     department: {
-      type: String,
-      trim: true
+      type: String
     },
 
     semester: {
@@ -59,17 +58,35 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// ================= PASSWORD HASH =================
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+/* ================= INDEXES ================= */
+
+// Fast login
+userSchema.index({ email: 1 });
+
+// Fast student lookup
+userSchema.index({ studentId: 1 });
+
+// Fast role filtering
+userSchema.index({ role: 1 });
+
+/* ============================================ */
+
+// Match password
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Hash password before save
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    next();
+  }
 
   const salt = await bcrypt.genSalt(10);
+
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// ================= PASSWORD MATCH =================
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return bcrypt.compare(enteredPassword, this.password);
-};
+const User = mongoose.model('User', userSchema);
 
-export default mongoose.model('User', userSchema);
+export default User;
