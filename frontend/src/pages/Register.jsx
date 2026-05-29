@@ -1,5 +1,7 @@
 
 //frontend/src/pages/Register.jsx
+//frontend/src/pages/Register.jsx
+
 import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { QrCode } from 'lucide-react';
@@ -7,7 +9,7 @@ import AuthContext from '../context/AuthContext';
 
 //what does this component do?
 // This component provides a registration form for new users to create an account on the AttendEase platform.
-// It collects user details such as name, email, password, role (student, faculty, admin), and additional student-specific information if applicable. 
+// It collects user details such as name, email, password, role (student, faculty, admin), and additional student-specific information if applicable.
 // Upon submission, it interacts with the AuthContext to register the user and handles navigation and error display.
 // It manages form state, loading state, and error messages during the registration process.
 
@@ -22,8 +24,10 @@ import AuthContext from '../context/AuthContext';
 // useRef – REMEMBER WITHOUT RE-RENDER.. Store a value that does NOT cause re-render.
 // useState – REMEMBER WITH RE-RENDER..
 // useContext – REMEMBER WITH RE-RENDER + GLOBAL ACCESS..
-//  useEffect – SIDE EFFECTS (fetching data, subscriptions, timers) without blocking rendering. 
+//  useEffect – SIDE EFFECTS (fetching data, subscriptions, timers) without blocking rendering.
+
 const Register = () => {
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -33,150 +37,389 @@ const Register = () => {
     department: '',
     semester: ''
   });
+
   const [error, setError] = useState('');
+
   const [loading, setLoading] = useState(false);
+
   const { register } = useContext(AuthContext);
+
   const navigate = useNavigate();
 
+  // EMAIL VALIDATION
+  const validateEmail = (email) => {
+
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    return emailRegex.test(email);
+  };
+
+  // PASSWORD VALIDATION
+  const validatePassword = (password) => {
+
+    // Minimum 8 chars
+    // 1 uppercase
+    // 1 lowercase
+    // 1 number
+    // 1 special character
+    // No spaces
+
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    return passwordRegex.test(password);
+  };
+
   const handleSubmit = async (e) => {
+
     e.preventDefault();
+
     setError('');
+
+    // ================= NAME VALIDATION =================
+
+    if (formData.name.trim().length < 3) {
+
+      return setError(
+        'Name must contain at least 3 characters'
+      );
+    }
+
+    const nameRegex = /^[A-Za-z\s]+$/;
+
+    if (!nameRegex.test(formData.name)) {
+
+      return setError(
+        'Name should contain only alphabets'
+      );
+    }
+
+    // ================= EMAIL VALIDATION =================
+
+    if (!validateEmail(formData.email)) {
+
+      return setError(
+        'Please enter a valid email address'
+      );
+    }
+
+    // FACULTY EMAIL VALIDATION
+
+    if (
+      formData.role === 'faculty' &&
+      !formData.email.endsWith('@mgmjnec.org')
+    ) {
+
+      return setError(
+        'Faculty must register using @mgmjnec.org email'
+      );
+    }
+
+    // ================= PASSWORD VALIDATION =================
+
+    if (!validatePassword(formData.password)) {
+
+      return setError(
+        'Password must contain minimum 8 characters, uppercase, lowercase, number, and special character'
+      );
+    }
+
+    // NO SPACES IN PASSWORD
+
+    if (/\s/.test(formData.password)) {
+
+      return setError(
+        'Password should not contain spaces'
+      );
+    }
+
+    // ================= STUDENT VALIDATION =================
+
+    if (formData.role === 'student') {
+
+      // STUDENT ID VALIDATION
+
+      const studentIdRegex = /^\d{1,6}$/;
+
+      if (!studentIdRegex.test(formData.studentId)) {
+
+        return setError(
+          'Student ID must contain only numbers and maximum 6 digits'
+        );
+      }
+
+      // SEMESTER VALIDATION
+
+      const semester = Number(formData.semester);
+
+      if (semester < 1 || semester > 8) {
+
+        return setError(
+          'Semester must be between 1 and 8'
+        );
+      }
+    }
+
     setLoading(true);
 
     try {
+
       await register(formData);
+
       navigate('/');
+
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+
+      setError(
+        err.response?.data?.message ||
+        'Registration failed'
+      );
+
     } finally {
+
       setLoading(false);
     }
   };
 
   return (
+
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
+
         <div>
+
           <div className="flex justify-center">
             <QrCode className="h-16 w-16 text-blue-600" />
           </div>
+
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
+
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
             </div>
           )}
-          
+
           <div className="space-y-4">
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+
+              <label className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+
               <input
                 type="text"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                //...formData is called the spread operator. 
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    name: e.target.value
+                  })
+                }
+
+                //...formData is called the spread operator.
                 //It copies all existing values from formData into a new object.
               />
+
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+
+              <label className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+
               <input
                 type="email"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    email: e.target.value
+                  })
+                }
               />
+
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
+
+              <label className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+
               <input
                 type="password"
                 required
-                minLength={6}
+                minLength={8}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    password: e.target.value
+                  })
+                }
               />
+
+              <p className="text-xs text-gray-500 mt-1">
+                Password must contain minimum 8 characters,
+                uppercase, lowercase, number and special character
+              </p>
+
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Role</label>
+
+              <label className="block text-sm font-medium text-gray-700">
+                Role
+              </label>
+
               <select
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    role: e.target.value
+                  })
+                }
               >
-                <option value="student">Student</option>
-                <option value="faculty">Faculty</option>
-                <option value="admin">Admin</option>
+
+                <option value="student">
+                  Student
+                </option>
+
+                <option value="faculty">
+                  Faculty
+                </option>
+
+                <option value="admin">
+                  Admin
+                </option>
+
               </select>
+
             </div>
-            
+
             {formData.role === 'student' && (
+
               <>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Student ID</label>
+
+                  <label className="block text-sm font-medium text-gray-700">
+                    Student ID
+                  </label>
+
                   <input
                     type="text"
                     required
+                    maxLength={6}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     value={formData.studentId}
-                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        studentId: e.target.value
+                      })
+                    }
                   />
+
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Department</label>
+
+                  <label className="block text-sm font-medium text-gray-700">
+                    Department
+                  </label>
+
                   <input
                     type="text"
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        department: e.target.value
+                      })
+                    }
                   />
+
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Semester</label>
+
+                  <label className="block text-sm font-medium text-gray-700">
+                    Semester
+                  </label>
+
                   <input
                     type="number"
                     min="1"
                     max="8"
+                    required
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        semester: e.target.value
+                      })
+                    }
                   />
+
                 </div>
+
               </>
             )}
+
           </div>
 
           <div>
+
             <button
               type="submit"
               disabled={loading}
               className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              {loading ? 'Registering...' : 'Register'}
+
+              {loading
+                ? 'Registering...'
+                : 'Register'}
+
             </button>
+
           </div>
-          
+
           <div className="text-center">
-            <Link to="/login" className="text-sm text-blue-600 hover:text-blue-500">
+
+            <Link
+              to="/login"
+              className="text-sm text-blue-600 hover:text-blue-500"
+            >
               Already have an account? Sign in
             </Link>
+
           </div>
+
         </form>
+
       </div>
+
     </div>
   );
 };
