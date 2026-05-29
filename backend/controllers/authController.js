@@ -1,7 +1,7 @@
-//backend/controllers/authController.js
-
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
+
+
 
 //Controllers are the brain of your backend logic.
 //They receive requests from routes
@@ -30,201 +30,247 @@ Protect sensitive data by excluding passwords
 
 Fetch user profile and all users (role-based)*/
 
-// Generate JWT token
+
+// GENERATE JWT TOKEN
 const generateToken = (id) => {
 
-  return jwt.sign(
-    { id },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: process.env.JWT_EXPIRE || '7d'
-    }
-  );
+    return jwt.sign(
+        { id },
+        process.env.JWT_SECRET,
+        {
+            expiresIn:
+                process.env.JWT_EXPIRE || '7d'
+        }
+    );
 };
 
 // ================= REGISTER =================
-
 export const register = async (req, res) => {
 
-  try {
+    try {
 
-    const {
-      name,
-      email,
-      password,
-      role,
-      studentId,
-      department,
-      semester
-    } = req.body;
+        let {
+            name,
+            email,
+            password,
+            role,
+            studentId,
+            department,
+            semester
+        } = req.body;
 
-    // 1. Check existing user
+        // CLEAN INPUTS
+        name = name?.trim();
+        email = email?.trim().toLowerCase();
 
-    const userExists = await User.findOne({ email });
+        // CHECK EXISTING USER
+        const userExists =
+            await User.findOne({ email });
 
-    if (userExists) {
-      return res
-        .status(400)
-        .json({ message: 'User already exists' });
-    }
+        if (userExists) {
 
-    // 2. Build user object safely
+            return res.status(400).json({
+                message: 'User already exists'
+            });
+        }
 
-    const userData = {
-      name,
-      email,
-      password,
-      role,
-      department,
-      semester
-    };
+        // NAME VALIDATION
+        if (!name || name.length < 3) {
 
-    // 3. Role-based validation
+            return res.status(400).json({
+                message:
+                    'Name must contain at least 3 characters'
+            });
+        }
 
-    if (role === 'student') {
+        // ONLY ALPHABETS + SPACES
+        const nameRegex = /^[A-Za-z\s]+$/;
 
-      if (!studentId) {
+        if (!nameRegex.test(name)) {
 
-        return res.status(400).json({
-          message: 'Student ID is required for students'
+            return res.status(400).json({
+                message:
+                    'Name should contain only alphabets'
+            });
+        }
+
+        // EMAIL FORMAT VALIDATION
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+
+            return res.status(400).json({
+                message:
+                    'Please enter a valid email address'
+            });
+        }
+
+        // FACULTY EMAIL RESTRICTION
+        if (role === 'faculty') {
+
+            if (
+                !email.endsWith('@mgmjnec.org')
+            ) {
+
+                return res.status(400).json({
+                    message:
+                        'Faculty must register using @mgmjnec.org email'
+                });
+            }
+        }
+
+        // BUILD USER OBJECT
+        const userData = {
+            name,
+            email,
+            password,
+            role,
+            department,
+            semester
+        };
+
+        // STUDENT VALIDATION
+        if (role === 'student') {
+
+            if (!studentId) {
+
+                return res.status(400).json({
+                    message:
+                        'Student ID is required for students'
+                });
+            }
+
+            userData.studentId = studentId;
+        }
+
+        // CREATE USER
+        const user =
+            await User.create(userData);
+
+        // RESPONSE
+        res.status(201).json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            token: generateToken(user._id)
         });
-      }
 
-      userData.studentId = studentId;
+    } catch (error) {
+
+        console.error(
+            'REGISTER ERROR:',
+            error
+        );
+
+        res.status(500).json({
+            message: error.message
+        });
     }
-
-    // 4. Create user
-
-    const user = await User.create(userData);
-
-    // 5. Response
-
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token: generateToken(user._id)
-    });
-
-  } catch (error) {
-
-    console.error('REGISTER ERROR:', error);
-
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // ================= LOGIN =================
-
 export const login = async (req, res) => {
 
-  try {
+    try {
 
-    const { email, password } = req.body;
+        const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+        const user =
+            await User.findOne({
+                email: email.toLowerCase()
+            });
 
-    if (user && (await user.matchPassword(password))) {
+        if (
+            user &&
+            (await user.matchPassword(password))
+        ) {
 
-      return res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id)
-      });
+            return res.json({
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                token: generateToken(user._id)
+            });
+        }
+
+        res.status(401).json({
+            message:
+                'Invalid email or password'
+        });
+
+    } catch (error) {
+
+        console.error(
+            'LOGIN ERROR:',
+            error
+        );
+
+        res.status(500).json({
+            message: error.message
+        });
     }
-
-    res.status(401).json({
-      message: 'Invalid email or password'
-    });
-
-  } catch (error) {
-
-    console.error('LOGIN ERROR:', error);
-
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // ================= PROFILE =================
+export const getProfile = async (
+    req,
+    res
+) => {
 
-export const getProfile = async (req, res) => {
+    try {
 
-  try {
+        const user =
+            await User.findById(req.user._id)
+                .select('-password');
 
-    const user = await User.findById(req.user._id)
-      .select('-password');
+        res.json(user);
 
-    res.json(user);
+    } catch (error) {
 
-  } catch (error) {
+        console.error(
+            'PROFILE ERROR:',
+            error
+        );
 
-    console.error('PROFILE ERROR:', error);
-
-    res.status(500).json({ message: error.message });
-  }
+        res.status(500).json({
+            message: error.message
+        });
+    }
 };
 
 // ================= GET ALL USERS =================
+export const getAllUsers = async (
+    req,
+    res
+) => {
 
-export const getAllUsers = async (req, res) => {
+    try {
 
-  try {
+        // ONLY FACULTY & ADMIN
+        if (
+            req.user.role !== 'faculty' &&
+            req.user.role !== 'admin'
+        ) {
 
-    // Only faculty and admin can view all users
+            return res.status(403).json({
+                message:
+                    'Not authorized to view users'
+            });
+        }
 
-    if (
-      req.user.role !== 'faculty' &&
-      req.user.role !== 'admin'
-    ) {
-      return res.status(403).json({
-        message: 'Not authorized to view users'
-      });
+        const users =
+            await User.find()
+                .select('-password');
+
+        res.json(users);
+
+    } catch (error) {
+
+        res.status(500).json({
+            message: error.message
+        });
     }
-
-    // 🔥 PAGINATION PARAMETERS
-
-    const page = parseInt(req.query.page) || 1;
-
-    const limit = parseInt(req.query.limit) || 10;
-
-    const skip = (page - 1) * limit;
-
-    // 🔥 OPTIONAL ROLE FILTER
-
-    const role = req.query.role;
-
-    let query = {};
-
-    if (role) {
-      query.role = role;
-    }
-
-    // 🔥 TOTAL USERS COUNT
-
-    const totalUsers = await User.countDocuments(query);
-
-    // 🔥 PAGINATED USERS QUERY
-
-    const users = await User.find(query)
-      .select('-password')
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
-
-    // 🔥 PAGINATED RESPONSE
-
-    res.json({
-      users,
-      currentPage: page,
-      totalPages: Math.ceil(totalUsers / limit),
-      totalUsers
-    });
-
-  } catch (error) {
-
-    res.status(500).json({ message: error.message });
-  }
 };
