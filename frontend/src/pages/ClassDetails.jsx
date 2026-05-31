@@ -99,14 +99,16 @@ const ClassDetails = () => {
     }, 10 * 1000);
 
     // ⏱️ Stop QR generation automatically after 15 minutes
-    qrTimeoutRef.current = setTimeout(
-      () => {
-        stopAutoQR();
-        alert("Attendance session ended (15 minutes completed)");
-      },
-      15 * 60 * 1000,
-    );
+    const stopTime = new Date(qrData.sessionEndsAt);
 
+    const remainingTime = stopTime.getTime() - new Date().getTime();
+
+    if (remainingTime > 0) {
+      qrTimeoutRef.current = setTimeout(() => {
+        stopAutoQR();
+        alert("Class attendance session ended");
+      }, remainingTime);
+    }
     setGenerating(false);
   };
 
@@ -232,7 +234,7 @@ const ClassDetails = () => {
                 <QrCode className="h-5 w-5 mr-2" />
                 {generating
                   ? "Starting QR..."
-                  : "Start QR (15 min session, refresh every 10 sec)"}
+                  : "Start Attendance Session"}
               </button>
             ) : (
               <div className="bg-gray-50 rounded-lg p-6 text-center">

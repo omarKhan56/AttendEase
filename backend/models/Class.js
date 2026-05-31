@@ -60,8 +60,8 @@ const classSchema = new mongoose.Schema(
 
 /* ================= INDEXES ================= */
 
-// Fast class code lookup
-classSchema.index({ code: 1 });
+
+
 
 // Fast faculty class loading
 classSchema.index({ faculty: 1 });

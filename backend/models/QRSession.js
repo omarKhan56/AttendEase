@@ -1,59 +1,63 @@
 //backend/models/QRSession.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const qrSessionSchema = new mongoose.Schema({
   class: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Class',
-    required: true
+    ref: "Class",
+    required: true,
   },
 
   // 🔥 NEW: Fixed 15-minute attendance window
+  // Attendance session boundaries
+  // These will now be derived from the class schedule
   sessionStart: {
     type: Date,
-    required: true
-  },
-  sessionEndsAt: {
-    type: Date,
-    required: true
+    required: true,
   },
 
+  sessionEndsAt: {
+    type: Date,
+    required: true,
+  },
   qrCode: {
     type: String,
-    required: true
+    required: true,
   },
 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: "User",
+    required: true,
   },
 
   // 10-second QR validity window
   validFrom: {
     type: Date,
-    required: true
+    required: true,
   },
   validUntil: {
     type: Date,
-    required: true
+    required: true,
   },
 
   isActive: {
     type: Boolean,
-    default: true
+    default: true,
   },
 
-  attendees: [{
-    student: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+  attendees: [
+    {
+      student: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      markedAt: Date,
     },
-    markedAt: Date
-  }]
+  ],
 });
 
 // Auto-expire QR session AFTER 15 MINUTES
 qrSessionSchema.index({ sessionEndsAt: 1 }, { expireAfterSeconds: 0 });
 
-export default mongoose.model('QRSession', qrSessionSchema);
+export default mongoose.model("QRSession", qrSessionSchema);
