@@ -10,7 +10,7 @@ describe("Register API", () => {
       .send({
         name: "Test User",
         email: `test${Date.now()}@gmail.com`,
-        password: "password123",
+        password: "Password@123",
         role: "student",
         studentId: `${Math.floor(Math.random() * 1000000)}`
       });
