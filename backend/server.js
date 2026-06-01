@@ -77,3 +77,14 @@ app.listen(PORT, () => {
 
     console.log(`Server running on port ${PORT}`);
 });
+
+// ⭐ EXPORT APP FOR TESTING
+export default app;
+
+// ⭐ START SERVER ONLY WHEN NOT TESTING
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
