@@ -4,6 +4,7 @@
 import Attendance from '../models/Attendance.js';
 import Class from '../models/Class.js';
 import User from '../models/User.js';
+import redisClient from '../config/redis.js';
 
 /* analyticsController.js — Attendance Analytics & Reporting
 Main Purpose
@@ -28,18 +29,33 @@ One-line interview summary
 
 “analyticsController generates attendance statistics, trends, and performance insights.”
 */
-
 export const getClassAnalytics = async (req, res) => {
 
   try {
 
     const { classId } = req.params;
 
-    // 🔥 PAGINATION PARAMETERS
-
     const page = parseInt(req.query.page) || 1;
 
     const limit = parseInt(req.query.limit) || 10;
+
+    const cacheKey =
+      `classAnalytics:${classId}:${page}:${limit}`;
+
+    // CHECK REDIS CACHE
+    const cachedData =
+      await redisClient.get(cacheKey);
+
+    if (cachedData) {
+
+      console.log(
+        "Serving Class Analytics From Redis"
+      );
+
+      return res.json(
+        JSON.parse(cachedData)
+      );
+    }
 
     const skip = (page - 1) * limit;
 
@@ -97,45 +113,45 @@ export const getClassAnalytics = async (req, res) => {
       studentStats[studentId].percentage =
         totalSessions > 0
           ? (
-              (studentStats[studentId].present / totalSessions) * 100
+              (studentStats[studentId].present /
+                totalSessions) * 100
             ).toFixed(2)
           : 0;
     });
 
-    // 🔥 CONVERT TO ARRAY
+    const allStudentStats =
+      Object.values(studentStats);
 
-    const allStudentStats = Object.values(studentStats);
+    const paginatedStudentStats =
+      allStudentStats.slice(
+        skip,
+        skip + limit
+      );
 
-    // 🔥 PAGINATED STUDENT STATS
-
-    const paginatedStudentStats = allStudentStats.slice(
-      skip,
-      skip + limit
-    );
-
-    const dateWiseAttendance = await Attendance.aggregate([
-      {
-        $match: {
-          class: classDoc._id
+    const dateWiseAttendance =
+      await Attendance.aggregate([
+        {
+          $match: {
+            class: classDoc._id
+          }
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$date"
+              }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $sort: { _id: 1 }
         }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: {
-              format: "%Y-%m-%d",
-              date: "$date"
-            }
-          },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { _id: 1 }
-      }
-    ]);
+      ]);
 
-    res.json({
+    const responseData = {
 
       classInfo: {
         name: classDoc.name,
@@ -144,22 +160,35 @@ export const getClassAnalytics = async (req, res) => {
         totalSessions
       },
 
-      // 🔥 PAGINATED DATA
-
       studentStats: paginatedStudentStats,
 
       currentPage: page,
 
-      totalPages: Math.ceil(allStudentStats.length / limit),
+      totalPages: Math.ceil(
+        allStudentStats.length / limit
+      ),
 
-      totalStudentsAnalytics: allStudentStats.length,
+      totalStudentsAnalytics:
+        allStudentStats.length,
 
       dateWiseAttendance,
 
-      lowAttendanceStudents: allStudentStats.filter(
-        s => parseFloat(s.percentage) < 75
-      )
-    });
+      lowAttendanceStudents:
+        allStudentStats.filter(
+          s => parseFloat(s.percentage) < 75
+        )
+    };
+
+    // STORE IN REDIS FOR 5 MINUTES
+    await redisClient.set(
+      cacheKey,
+      JSON.stringify(responseData),
+      {
+        EX: 300
+      }
+    );
+
+    res.json(responseData);
 
   } catch (error) {
 
@@ -183,8 +212,26 @@ export const getStudentAnalytics = async (req, res) => {
     if (!studentId) {
 
       return res.status(400).json({
-        message: 'studentId is required for non-students'
+        message:
+          'studentId is required for non-students'
       });
+    }
+
+    const cacheKey =
+      `studentAnalytics:${studentId}`;
+
+    const cachedData =
+      await redisClient.get(cacheKey);
+
+    if (cachedData) {
+
+      console.log(
+        "Serving Student Analytics From Redis"
+      );
+
+      return res.json(
+        JSON.parse(cachedData)
+      );
     }
 
     const student = await User.findById(studentId)
@@ -207,16 +254,17 @@ export const getStudentAnalytics = async (req, res) => {
         })
         .then(dates => dates.length);
 
-      const presentCount = await Attendance.countDocuments({
+      const presentCount =
+        await Attendance.countDocuments({
 
-        class: classDoc._id,
+          class: classDoc._id,
 
-        student: studentId,
+          student: studentId,
 
-        status: {
-          $in: ['present', 'late']
-        }
-      });
+          status: {
+            $in: ['present', 'late']
+          }
+        });
 
       classStats.push({
 
@@ -228,18 +276,20 @@ export const getStudentAnalytics = async (req, res) => {
 
         present: presentCount,
 
-        absent: totalSessions - presentCount,
+        absent:
+          totalSessions - presentCount,
 
         percentage:
           totalSessions > 0
             ? (
-                (presentCount / totalSessions) * 100
+                (presentCount /
+                  totalSessions) * 100
               ).toFixed(2)
             : 0
       });
     }
 
-    res.json({
+    const responseData = {
 
       studentInfo: {
 
@@ -256,12 +306,25 @@ export const getStudentAnalytics = async (req, res) => {
         classStats.length > 0
           ? (
               classStats.reduce(
-                (sum, c) => sum + parseFloat(c.percentage),
+                (sum, c) =>
+                  sum +
+                  parseFloat(c.percentage),
                 0
               ) / classStats.length
             ).toFixed(2)
           : 0
-    });
+    };
+
+    // STORE IN REDIS FOR 5 MINUTES
+    await redisClient.set(
+      cacheKey,
+      JSON.stringify(responseData),
+      {
+        EX: 300
+      }
+    );
+
+    res.json(responseData);
 
   } catch (error) {
 

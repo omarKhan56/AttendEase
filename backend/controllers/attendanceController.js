@@ -6,6 +6,7 @@ import Attendance from "../models/Attendance.js";
 import Class from "../models/Class.js";
 import QRCode from "qrcode";
 import crypto from "crypto";
+import redisClient from "../config/redis.js";
 
 //crypto is a built-in Node.js module used to generate secure, unpredictable random values.
 //It comes pre-installed with Node.js
@@ -252,6 +253,34 @@ export const markAttendance = async (req, res) => {
       status: "present",
       markedBy: "qr",
     });
+    // ================= CACHE INVALIDATION =================
+
+    // Delete all cached class analytics pages
+
+    const classAnalyticsKeys = await redisClient.keys(
+      `classAnalytics:${qrSession.class._id}:*`,
+    );
+
+    if (classAnalyticsKeys.length > 0) {
+      await redisClient.del(...classAnalyticsKeys);
+    }
+
+    // Delete student analytics cache
+
+    await redisClient.del(`studentAnalytics:${req.user._id}`);
+    // ================= ATTENDANCE HISTORY CACHE =================
+
+    const attendanceHistoryKeys = await redisClient.keys("attendanceHistory:*");
+
+    if (attendanceHistoryKeys.length > 0) {
+      await redisClient.del(...attendanceHistoryKeys);
+    }
+
+    console.log("Redis cache invalidated");
+
+    console.log("Analytics cache invalidated");
+
+    // =====================================================
 
     qrSession.attendees.push({
       student: req.user._id,
@@ -280,6 +309,23 @@ export const getAttendanceHistory = async (req, res) => {
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    let cacheKey;
+
+    if (req.user.role === "student") {
+      cacheKey = `attendanceHistory:student:${req.user._id}:${classId || "all"}:${page}:${limit}`;
+    } else if (req.user.role === "faculty") {
+      cacheKey = `attendanceHistory:faculty:${req.user._id}:${classId}:${page}:${limit}`;
+    } else {
+      cacheKey = `attendanceHistory:admin:${classId}:${page}:${limit}`;
+    }
+
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      console.log("Serving Attendance History From Redis");
+
+      return res.json(JSON.parse(cachedData));
+    }
 
     // skip tells MongoDB how many records to skip
     const skip = (page - 1) * limit;
@@ -322,12 +368,21 @@ export const getAttendanceHistory = async (req, res) => {
 
     // 🔥 PAGINATED RESPONSE
 
-    res.json({
+    const responseData = {
       attendance,
+
       currentPage: page,
+
       totalPages: Math.ceil(totalRecords / limit),
+
       totalRecords,
+    };
+
+    await redisClient.set(cacheKey, JSON.stringify(responseData), {
+      EX: 300,
     });
+
+    res.json(responseData);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

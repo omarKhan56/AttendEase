@@ -1,7 +1,8 @@
 //backend/controllers/classController.js
 
-import Class from '../models/Class.js';
-import User from '../models/User.js';
+import Class from "../models/Class.js";
+import User from "../models/User.js";
+import redisClient from "../config/redis.js";
 
 //🏫 classController.js – Class management
 //What it handles:
@@ -40,22 +41,13 @@ One-line interview summary
 
 export const createClass = async (req, res) => {
   try {
-
-    const {
-      name,
-      code,
-      department,
-      semester,
-      schedule,
-      academicYear
-    } = req.body;
+    const { name, code, department, semester, schedule, academicYear } =
+      req.body;
 
     const classExists = await Class.findOne({ code });
 
     if (classExists) {
-      return res
-        .status(400)
-        .json({ message: 'Class code already exists' });
+      return res.status(400).json({ message: "Class code already exists" });
     }
 
     const newClass = await Class.create({
@@ -65,11 +57,19 @@ export const createClass = async (req, res) => {
       department,
       semester,
       schedule,
-      academicYear
+      academicYear,
     });
+    // ================= CLASSES CACHE INVALIDATION =================
+
+    const classKeys = await redisClient.keys("classes:*");
+
+    if (classKeys.length > 0) {
+      await redisClient.del(...classKeys);
+    }
+
+    // =============================================================
 
     res.status(201).json(newClass);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -77,12 +77,20 @@ export const createClass = async (req, res) => {
 
 export const getClasses = async (req, res) => {
   try {
-
     // 🔥 PAGINATION PARAMETERS
 
     const page = parseInt(req.query.page) || 1;
 
     const limit = parseInt(req.query.limit) || 6;
+    const cacheKey = `classes:${req.user.role}:${req.user._id}:${page}:${limit}`;
+
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      console.log("Serving Classes From Redis");
+
+      return res.json(JSON.parse(cachedData));
+    }
 
     const skip = (page - 1) * limit;
 
@@ -90,12 +98,9 @@ export const getClasses = async (req, res) => {
 
     // 🔥 ROLE-BASED QUERY
 
-    if (req.user.role === 'faculty') {
-
+    if (req.user.role === "faculty") {
       query = { faculty: req.user._id };
-
-    } else if (req.user.role === 'student') {
-
+    } else if (req.user.role === "student") {
       query = { students: req.user._id };
     }
 
@@ -107,48 +112,48 @@ export const getClasses = async (req, res) => {
 
     let classes;
 
-    if (req.user.role === 'faculty') {
-
+    if (req.user.role === "faculty") {
       classes = await Class.find(query)
-        .populate('faculty', 'name email')
-        .populate('students', 'name studentId')
+        .populate("faculty", "name email")
+        .populate("students", "name studentId")
         .skip(skip)
         .limit(limit);
-
-    } else if (req.user.role === 'student') {
-
+    } else if (req.user.role === "student") {
       classes = await Class.find(query)
-        .populate('faculty', 'name email')
+        .populate("faculty", "name email")
         .skip(skip)
         .limit(limit);
-
     } else {
-
       classes = await Class.find(query)
-        .populate('faculty', 'name email')
-        .populate('students', 'name studentId')
+        .populate("faculty", "name email")
+        .populate("students", "name studentId")
         .skip(skip)
         .limit(limit);
     }
 
     // 🔥 RETURN PAGINATED RESPONSE
 
-    res.json({
+    const responseData = {
       classes,
+
       currentPage: page,
+
       totalPages: Math.ceil(totalClasses / limit),
-      totalClasses
+
+      totalClasses,
+    };
+
+    await redisClient.set(cacheKey, JSON.stringify(responseData), {
+      EX: 300,
     });
 
+    res.json(responseData);
   } catch (error) {
-
     res.status(500).json({ message: error.message });
   }
 };
 export const enrollStudent = async (req, res) => {
-
   try {
-
     const { classId, studentId } = req.body;
 
     const classDoc = await Class.findById(classId);
@@ -156,21 +161,15 @@ export const enrollStudent = async (req, res) => {
     const student = await User.findById(studentId);
 
     if (!classDoc || !student) {
-      return res
-        .status(404)
-        .json({ message: 'Class or student not found' });
+      return res.status(404).json({ message: "Class or student not found" });
     }
 
-    if (student.role !== 'student') {
-      return res
-        .status(400)
-        .json({ message: 'User is not a student' });
+    if (student.role !== "student") {
+      return res.status(400).json({ message: "User is not a student" });
     }
 
     if (classDoc.students.includes(studentId)) {
-      return res
-        .status(400)
-        .json({ message: 'Student already enrolled' });
+      return res.status(400).json({ message: "Student already enrolled" });
     }
 
     classDoc.students.push(studentId);
@@ -180,9 +179,17 @@ export const enrollStudent = async (req, res) => {
     await classDoc.save();
 
     await student.save();
+    // ================= CLASSES CACHE INVALIDATION =================
 
-    res.json({ message: 'Student enrolled successfully' });
+    const classKeys = await redisClient.keys("classes:*");
 
+    if (classKeys.length > 0) {
+      await redisClient.del(...classKeys);
+    }
+
+    // =============================================================
+
+    res.json({ message: "Student enrolled successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

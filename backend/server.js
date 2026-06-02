@@ -13,6 +13,7 @@ import attendanceRoutes from './routes/attendanceRoutes.js'; // Attendance route
 import analyticsRoutes from './routes/analyticsRoutes.js'; // Analytics routes
 
 dotenv.config();
+import redisClient from "./config/redis.js";
 
 const app = express();
 
@@ -73,10 +74,7 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
 
-    console.log(`Server running on port ${PORT}`);
-});
 
 // ⭐ EXPORT APP FOR TESTING
 export default app;
