@@ -1,36 +1,30 @@
 // frontend/src/pages/EnrollStudents.jsx
 // frontend/src/pages/EnrollStudents.jsx
 
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import {
-  UserPlus,
-  Search,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { UserPlus, Search, CheckCircle, XCircle } from "lucide-react";
 
-import axios from 'axios';
+import axios from "axios";
 
 //Total Pages Calculation
 //const total = await Class.countDocuments();
 //const totalPages = Math.ceil(total / 10); // assuming 10 items per page
 
 const EnrollStudents = () => {
-
   const { classId } = useParams();
   const navigate = useNavigate();
 
   const [classData, setClassData] = useState(null);
   const [allStudents, setAllStudents] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudents, setSelectedStudents] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
 
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -40,23 +34,27 @@ const EnrollStudents = () => {
   }, [classId, page]);
 
   const fetchClassAndStudents = async () => {
+    const token = localStorage.getItem("token");
 
     setLoading(true);
 
     try {
-
       const classesRes = await axios.get(
-        `${import.meta.env.VITE_API_URL}/classes?page=1&limit=100`
+        `${import.meta.env.VITE_API_URL}/classes?page=1&limit=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
-
       const foundClass = classesRes.data.classes?.find(
-        cls => cls._id === classId
+        (cls) => cls._id === classId,
       );
 
       // ✅ FIX 1: prevent crash if class not found
       if (!foundClass) {
         setClassData(null);
-        setErrorMessage('Class not found');
+        setErrorMessage("Class not found");
         setLoading(false);
         return;
       }
@@ -64,32 +62,32 @@ const EnrollStudents = () => {
       setClassData(foundClass);
 
       const usersRes = await axios.get(
-        `${import.meta.env.VITE_API_URL}/auth/users?page=${page}&limit=10&role=student`
+        `${import.meta.env.VITE_API_URL}/auth/users?page=${page}&limit=10&role=student`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
       const users = usersRes.data.users || [];
       setTotalPages(usersRes.data.totalPages || 1);
 
       // ✅ FIX 2: safe access to students
-      const enrolledStudentIds =
-        foundClass?.students?.map(s => s._id) || [];
+      const enrolledStudentIds = foundClass?.students?.map((s) => s._id) || [];
 
       const availableStudents = users.filter(
-        user =>
-          user.role === 'student' &&
-          !enrolledStudentIds.includes(user._id)
+        (user) =>
+          user.role === "student" && !enrolledStudentIds.includes(user._id),
       );
 
       setAllStudents(availableStudents);
-
     } catch (error) {
-
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
 
       setErrorMessage(
-        'Failed to load data. Make sure the backend endpoint exists.'
+        "Failed to load data. Make sure the backend endpoint exists.",
       );
-
     } finally {
       setLoading(false);
     }
@@ -99,74 +97,68 @@ const EnrollStudents = () => {
   // the backend should support pagination for the users endpoint to make this efficient
 
   const toggleStudentSelection = (studentId) => {
-
     if (selectedStudents.includes(studentId)) {
-      setSelectedStudents(
-        selectedStudents.filter(id => id !== studentId)
-      );
+      setSelectedStudents(selectedStudents.filter((id) => id !== studentId));
     } else {
-      setSelectedStudents([
-        ...selectedStudents,
-        studentId
-      ]);
+      setSelectedStudents([...selectedStudents, studentId]);
     }
   };
 
   const handleEnrollStudents = async () => {
-
     if (selectedStudents.length === 0) {
-      setErrorMessage('Please select at least one student to enroll');
+      setErrorMessage("Please select at least one student to enroll");
       return;
     }
 
     setEnrolling(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    setErrorMessage("");
+    setSuccessMessage("");
+    const token = localStorage.getItem("token");
 
     try {
-
-      const enrollPromises = selectedStudents.map(
-        studentId =>
-          axios.post(
-            `${import.meta.env.VITE_API_URL}/classes/enroll`,
-            {
-              classId,
-              studentId
-            }
-          )
+      const enrollPromises = selectedStudents.map((studentId) =>
+        axios.post(
+          `${import.meta.env.VITE_API_URL}/classes/enroll`,
+          {
+            classId,
+            studentId,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        ),
       );
 
       await Promise.all(enrollPromises);
 
       setSuccessMessage(
-        `Successfully enrolled ${selectedStudents.length} student(s)!`
+        `Successfully enrolled ${selectedStudents.length} student(s)!`,
       );
 
       setSelectedStudents([]);
 
       setTimeout(() => {
         fetchClassAndStudents();
-        setSuccessMessage('');
+        setSuccessMessage("");
       }, 1500);
-
     } catch (error) {
-
-      console.error('Error enrolling students:', error);
+      console.error("Error enrolling students:", error.response?.data || error);
 
       setErrorMessage(
-        error.response?.data?.message ||
-        'Failed to enroll students'
+        error.response?.data?.message || "Failed to enroll students",
       );
-
     } finally {
       setEnrolling(false);
     }
   };
 
-  const filteredStudents = allStudents.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStudents = allStudents.filter(
+    (student) =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (loading) {
@@ -188,12 +180,9 @@ const EnrollStudents = () => {
   }
 
   return (
-
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
       {/* Header */}
       <div className="mb-8">
-
         <button
           onClick={() => navigate(`/classes/${classId}`)}
           className="text-blue-600 hover:text-blue-700 mb-4 flex items-center text-sm"
@@ -207,14 +196,13 @@ const EnrollStudents = () => {
 
         <p className="text-gray-600">
           Class:
-          <span className="font-semibold"> {classData.name}</span>
-          ({classData.code})
+          <span className="font-semibold"> {classData.name}</span>(
+          {classData.code})
         </p>
 
         <p className="text-sm text-gray-500 mt-1">
           Currently enrolled: {classData.students?.length || 0} students
         </p>
-
       </div>
 
       {/* Messages */}
@@ -234,7 +222,6 @@ const EnrollStudents = () => {
 
       {/* Search */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
 
@@ -246,28 +233,21 @@ const EnrollStudents = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow">
-
         {filteredStudents.length === 0 ? (
-
           <div className="p-8 text-center">
             <UserPlus className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold">
-              {searchTerm ? 'No students found' : 'All students are enrolled'}
+              {searchTerm ? "No students found" : "All students are enrolled"}
             </h3>
           </div>
-
         ) : (
-
           <>
             <div className="overflow-x-auto">
-
               <table className="min-w-full divide-y divide-gray-200">
-
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="w-12 px-6 py-3"></th>
@@ -284,18 +264,16 @@ const EnrollStudents = () => {
                 </thead>
 
                 <tbody className="bg-white divide-y divide-gray-200">
-
-                  {filteredStudents.map(student => (
+                  {filteredStudents.map((student) => (
                     <tr
                       key={student._id}
                       className={`hover:bg-gray-50 cursor-pointer ${
                         selectedStudents.includes(student._id)
-                          ? 'bg-blue-50'
-                          : ''
+                          ? "bg-blue-50"
+                          : ""
                       }`}
                       onClick={() => toggleStudentSelection(student._id)}
                     >
-
                       <td className="px-6 py-4">
                         <input
                           type="checkbox"
@@ -306,16 +284,14 @@ const EnrollStudents = () => {
                       </td>
 
                       <td className="px-6 py-4">{student.name}</td>
-                      <td className="px-6 py-4">{student.studentId || 'N/A'}</td>
+                      <td className="px-6 py-4">
+                        {student.studentId || "N/A"}
+                      </td>
                       <td className="px-6 py-4">{student.email}</td>
-
                     </tr>
                   ))}
-
                 </tbody>
-
               </table>
-
             </div>
 
             {/* 🔥 FIXED ENROLL BUTTON (THIS WAS YOUR MAIN ISSUE) */}
@@ -325,27 +301,25 @@ const EnrollStudents = () => {
                 disabled={enrolling || selectedStudents.length === 0}
                 className={`px-6 py-2 rounded-lg ${
                   enrolling || selectedStudents.length === 0
-                    ? 'bg-gray-300'
-                    : 'bg-green-600 text-white hover:bg-green-700'
+                    ? "bg-gray-300"
+                    : "bg-green-600 text-white hover:bg-green-700"
                 }`}
               >
                 {enrolling
-                  ? 'Enrolling...'
+                  ? "Enrolling..."
                   : `Enroll Selected (${selectedStudents.length})`}
               </button>
             </div>
 
             {/* Pagination */}
             <div className="flex justify-center gap-4 p-4 bg-gray-50">
-
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              >
+              <button onClick={() => setPage(page - 1)} disabled={page === 1}>
                 Previous
               </button>
 
-              <span>Page {page} of {totalPages}</span>
+              <span>
+                Page {page} of {totalPages}
+              </span>
 
               <button
                 onClick={() => setPage(page + 1)}
@@ -353,14 +327,10 @@ const EnrollStudents = () => {
               >
                 Next
               </button>
-
             </div>
-
           </>
         )}
-
       </div>
-
     </div>
   );
 };
