@@ -168,17 +168,23 @@ export const enrollStudent = async (req, res) => {
       return res.status(400).json({ message: "User is not a student" });
     }
 
-    if (classDoc.students.includes(studentId)) {
-      return res.status(400).json({ message: "Student already enrolled" });
+    if (classDoc.students.some((id) => id.toString() === studentId)) {
+      return res.status(400).json({
+        message: "Student already enrolled",
+      });
     }
 
-    classDoc.students.push(studentId);
+    await Class.findByIdAndUpdate(classId, {
+      $addToSet: {
+        students: studentId,
+      },
+    });
 
-    student.enrolledClasses.push(classId);
-
-    await classDoc.save();
-
-    await student.save();
+    await User.findByIdAndUpdate(studentId, {
+      $addToSet: {
+        enrolledClasses: classId,
+      },
+    });
     // ================= CLASSES CACHE INVALIDATION =================
 
     const classKeys = await redisClient.keys("classes:*");
@@ -191,6 +197,10 @@ export const enrollStudent = async (req, res) => {
 
     res.json({ message: "Student enrolled successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("ENROLL ERROR:", error);
+
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
