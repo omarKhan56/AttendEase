@@ -1,6 +1,5 @@
 import request from "supertest";
-import app from "../app.js";
-
+import app from "../server.js"; // ✅
 describe("Class API", () => {
 
   let facultyToken;
