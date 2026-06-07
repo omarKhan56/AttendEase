@@ -39,17 +39,16 @@ const EnrollStudents = () => {
     setLoading(true);
 
     try {
-      const classesRes = await axios.get(
-        `${import.meta.env.VITE_API_URL}/classes?page=1&limit=100`,
+      const classRes = await axios.get(
+        `${import.meta.env.VITE_API_URL}/classes/${classId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         },
       );
-      const foundClass = classesRes.data.classes?.find(
-        (cls) => cls._id === classId,
-      );
+
+      const foundClass = classRes.data;
 
       // ✅ FIX 1: prevent crash if class not found
       if (!foundClass) {

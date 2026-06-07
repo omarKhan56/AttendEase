@@ -1,14 +1,28 @@
 //backend/routes/classRoutes.js
-
 import express from 'express';
-import { createClass, getClasses, enrollStudent } from '../controllers/classController.js';
+import rateLimit from "express-rate-limit";
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
+import {
+  createClass,
+  getClasses,
+  getClassById,
+  enrollStudent,
+} from "../controllers/classController.js";
 const router = express.Router();
 
-router.post('/', protect, authorize('faculty', 'admin'), createClass);
-router.get('/', protect, getClasses);
-router.post('/enroll', protect, authorize('faculty', 'admin'), enrollStudent);
+router.post("/", protect, authorize("faculty", "admin"), createClass);
+
+router.get("/", protect, getClasses);
+
+router.get("/:id", protect, getClassById);
+
+router.post(
+  "/enroll",
+  protect,
+  authorize("faculty", "admin"),
+  enrollStudent
+);
 
 export default router;
 

@@ -157,15 +157,18 @@ export const enrollStudent = async (req, res) => {
     const { classId, studentId } = req.body;
 
     const classDoc = await Class.findById(classId);
-
     const student = await User.findById(studentId);
 
     if (!classDoc || !student) {
-      return res.status(404).json({ message: "Class or student not found" });
+      return res.status(404).json({
+        message: "Class or student not found",
+      });
     }
 
     if (student.role !== "student") {
-      return res.status(400).json({ message: "User is not a student" });
+      return res.status(400).json({
+        message: "User is not a student",
+      });
     }
 
     if (classDoc.students.some((id) => id.toString() === studentId)) {
@@ -185,6 +188,7 @@ export const enrollStudent = async (req, res) => {
         enrolledClasses: classId,
       },
     });
+
     // ================= CLASSES CACHE INVALIDATION =================
 
     const classKeys = await redisClient.keys("classes:*");
@@ -195,10 +199,38 @@ export const enrollStudent = async (req, res) => {
 
     // =============================================================
 
-    res.json({ message: "Student enrolled successfully" });
+    // Get updated class with populated data
+    const updatedClass = await Class.findById(classId)
+      .populate("faculty", "name email")
+      .populate("students", "name studentId");
+
+    res.json({
+      message: "Student enrolled successfully",
+      class: updatedClass,
+    });
+
   } catch (error) {
     console.error("ENROLL ERROR:", error);
 
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+export const getClassById = async (req, res) => {
+  try {
+    const classDoc = await Class.findById(req.params.id)
+      .populate("faculty", "name email")
+      .populate("students", "name studentId");
+
+    if (!classDoc) {
+      return res.status(404).json({
+        message: "Class not found",
+      });
+    }
+
+    res.json(classDoc);
+  } catch (error) {
     res.status(500).json({
       message: error.message,
     });
