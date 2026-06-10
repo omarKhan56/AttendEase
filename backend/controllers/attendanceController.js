@@ -63,6 +63,7 @@ One-line interview summary
 */
 
 // Returns current IST date/time
+
 const getISTDate = () => {
   return new Date(
     new Date().toLocaleString("en-US", {
@@ -155,10 +156,10 @@ export const generateQR = async (req, res) => {
     // Secure QR value
     const qrCode = crypto.randomBytes(32).toString("hex");
 
-    const validFrom = new Date();
+    const validFrom = getISTDate();
 
     // 🔥 UPDATED: QR valid for only 10 seconds
-    const validUntil = new Date(validFrom.getTime() + 10 * 1000);
+    const validUntil = new Date(validFrom.getTime() + 30 * 1000);
 
     const qrSession = await QRSession.create({
       class: classId,
@@ -182,12 +183,15 @@ export const generateQR = async (req, res) => {
       }),
     );
 
+    console.log("VALID FROM:", validFrom);
+    console.log("VALID UNTIL:", validUntil);
+
     res.json({
       sessionId: qrSession._id,
       qrImage,
       validUntil,
       sessionEndsAt,
-      expirySeconds: 10,
+      expirySeconds: 30,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -204,8 +208,7 @@ export const markAttendance = async (req, res) => {
     if (!qrSession || !qrSession.isActive)
       return res.status(400).json({ message: "QR is invalid or expired" });
 
-    const now = getISTDate();
-    // 🔥 NEW: Check fixed 15-minute attendance window
+    const now = getISTDate(); // 🔥 NEW: Check fixed 15-minute attendance window
     if (now < qrSession.sessionStart || now > qrSession.sessionEndsAt) {
       qrSession.isActive = false;
       await qrSession.save();
@@ -216,6 +219,9 @@ export const markAttendance = async (req, res) => {
     // QR value must match
     if (qrSession.qrCode !== qrCode)
       return res.status(400).json({ message: "Invalid QR code" });
+    console.log("NOW:", now);
+    console.log("DB VALID FROM:", qrSession.validFrom);
+    console.log("DB VALID UNTIL:", qrSession.validUntil);
 
     // 🔥 Strict 10-second QR validation
     if (now < qrSession.validFrom || now > qrSession.validUntil) {
@@ -249,7 +255,7 @@ export const markAttendance = async (req, res) => {
     const attendance = await Attendance.create({
       class: qrSession.class._id,
       student: req.user._id,
-      date: new Date(),
+      date: getISTDate(),
       status: "present",
       markedBy: "qr",
     });
@@ -284,7 +290,7 @@ export const markAttendance = async (req, res) => {
 
     qrSession.attendees.push({
       student: req.user._id,
-      markedAt: new Date(),
+       markedAt: getISTDate(),
     });
 
     await qrSession.save();

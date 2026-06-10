@@ -50,12 +50,13 @@ const ClassDetails = () => {
   const fetchClassDetails = async () => {
     try {
       const { data } = await axios.get(
-        `${import.meta.env.VITE_API_URL}/classes`,
+        `${import.meta.env.VITE_API_URL}/classes/${id}`,
       );
-      const foundClass = data.classes.find((cls) => cls._id === id);
-      setClassData(foundClass);
+
+      setClassData(data);
     } catch (error) {
       console.error("Error fetching class details:", error);
+      setClassData(null);
     } finally {
       setLoading(false);
     }
@@ -232,9 +233,7 @@ const ClassDetails = () => {
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center"
               >
                 <QrCode className="h-5 w-5 mr-2" />
-                {generating
-                  ? "Starting QR..."
-                  : "Start Attendance Session"}
+                {generating ? "Starting QR..." : "Start Attendance Session"}
               </button>
             ) : (
               <div className="bg-gray-50 rounded-lg p-6 text-center">

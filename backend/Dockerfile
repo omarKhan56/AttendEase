@@ -1,4 +1,6 @@
+
 FROM node:20 
+ENV TZ=Asia/Kolkata
 
 WORKDIR /app
 
