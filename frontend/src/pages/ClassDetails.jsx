@@ -69,11 +69,16 @@ const ClassDetails = () => {
         `${import.meta.env.VITE_API_URL}/attendance/generate-qr`,
         { classId: id },
       );
+
       setQrData(data);
+
+      return data; // ← ADD THIS
     } catch (error) {
       console.error("Error generating QR:", error);
       alert(error.response?.data?.message || "Failed to generate QR code");
       stopAutoQR();
+
+      return null; // ← ADD THIS
     }
   };
 
@@ -82,7 +87,10 @@ const ClassDetails = () => {
     setGenerating(true);
 
     // Generate first QR immediately
-    await generateQR();
+    // Generate first QR immediately
+    const qrResponse = await generateQR();
+
+    if (!qrResponse) return;
 
     // Clear old interval if exists
     if (qrIntervalRef.current) {
@@ -94,14 +102,11 @@ const ClassDetails = () => {
       clearTimeout(qrTimeoutRef.current);
     }
 
-    // 🔁 Regenerate QR every 10 seconds
     qrIntervalRef.current = setInterval(() => {
       generateQR();
-    }, 10 * 1000);
-
+    }, 30 * 1000);
     // ⏱️ Stop QR generation automatically after 15 minutes
-    const stopTime = new Date(qrData.sessionEndsAt);
-
+    const stopTime = new Date(qrResponse.sessionEndsAt);
     const remainingTime = stopTime.getTime() - new Date().getTime();
 
     if (remainingTime > 0) {
@@ -249,7 +254,7 @@ const ClassDetails = () => {
                 />
 
                 <p className="text-sm text-gray-600 mb-2">
-                  QR regenerates automatically every <b>10 seconds</b>
+                  QR regenerates automatically every <b>30 seconds</b>
                 </p>
 
                 <p className="text-xs text-red-600 font-medium">
