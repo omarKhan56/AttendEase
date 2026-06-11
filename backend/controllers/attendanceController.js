@@ -87,14 +87,10 @@ export const generateQR = async (req, res) => {
     if (!classDoc) return res.status(404).json({ message: "Class not found" });
 
     // Faculty-only QR generation
+    // Faculty-only QR generation
     if (classDoc.faculty.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized" });
-
     // 🔥 NEW: Invalidate all previous active QR sessions for this class
-    await QRSession.updateMany(
-      { class: classId, isActive: true },
-      { isActive: false },
-    );
 
     // ================= REAL SCHEDULE VALIDATION =================
 
@@ -205,8 +201,10 @@ export const markAttendance = async (req, res) => {
     const qrSession = await QRSession.findById(sessionId).populate("class");
 
     // 🔐 QR must exist and be active
-    if (!qrSession || !qrSession.isActive)
-      return res.status(400).json({ message: "QR is invalid or expired" });
+    if (!qrSession)
+      return res.status(400).json({
+        message: "QR session not found",
+      });
 
     const now = getISTDate(); // 🔥 NEW: Check fixed 15-minute attendance window
     if (now < qrSession.sessionStart || now > qrSession.sessionEndsAt) {
@@ -290,7 +288,7 @@ export const markAttendance = async (req, res) => {
 
     qrSession.attendees.push({
       student: req.user._id,
-       markedAt: getISTDate(),
+      markedAt: getISTDate(),
     });
 
     await qrSession.save();
