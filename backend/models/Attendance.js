@@ -28,6 +28,14 @@ const attendanceSchema = new mongoose.Schema(
       default: 'present'
     },
 
+    // NEW: was being passed to .create() already but silently dropped —
+    // the schema never actually defined this field until now.
+    markedBy: {
+      type: String,
+      enum: ['qr', 'qr+biometric'],
+      default: 'qr'
+    },
+
     qrToken: {
       type: String
     }
@@ -39,16 +47,10 @@ const attendanceSchema = new mongoose.Schema(
 
 /* ================= INDEXES ================= */
 
-// Fast analytics queries
 attendanceSchema.index({ class: 1 });
-
-// Fast student attendance lookup
 attendanceSchema.index({ student: 1 });
-
 attendanceSchema.index({ date: 1 });
-
 attendanceSchema.index({ class: 1, student: 1 });
-
 attendanceSchema.index({ class: 1, date: 1 });
 
 /* ============================================ */

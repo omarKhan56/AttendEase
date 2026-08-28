@@ -1,12 +1,9 @@
 //backend/controllers/attendanceController.js
 //backend/controllers/attendanceController.js
+//backend/controllers/attendanceController.js
 
-import QRSession from "../models/QRSession.js";
-import Attendance from "../models/Attendance.js";
-import Class from "../models/Class.js";
-import QRCode from "qrcode";
-import crypto from "crypto";
-import redisClient from "../config/redis.js";
+//backend/controllers/attendanceController.js
+
 
 //crypto is a built-in Node.js module used to generate secure, unpredictable random values.
 //It comes pre-installed with Node.js
@@ -63,7 +60,16 @@ One-line interview summary
 */
 
 // Returns current IST date/time
+// Returns current IST date/time
+import QRSession from "../models/QRSession.js";
+import Attendance from "../models/Attendance.js";
+import Class from "../models/Class.js";
+import QRCode from "qrcode";
+import crypto from "crypto";
+import redisClient, { deleteByPattern } from "../config/redis.js";
+import { verifyAuthenticationAssertion } from "./webauthnController.js";
 
+// Returns current IST date/time
 const getISTDate = () => {
   return new Date(
     new Date().toLocaleString("en-US", {
@@ -87,10 +93,14 @@ export const generateQR = async (req, res) => {
     if (!classDoc) return res.status(404).json({ message: "Class not found" });
 
     // Faculty-only QR generation
-    // Faculty-only QR generation
     if (classDoc.faculty.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized" });
-    // 🔥 NEW: Invalidate all previous active QR sessions for this class
+
+    // Invalidate all previous active QR sessions for this class
+    await QRSession.updateMany(
+      { class: classId, isActive: true },
+      { isActive: false },
+    );
 
     // ================= REAL SCHEDULE VALIDATION =================
 
@@ -113,7 +123,6 @@ export const generateQR = async (req, res) => {
     }
 
     const startMinutes = timeToMinutes(todaySchedule.startTime);
-
     const endMinutes = timeToMinutes(todaySchedule.endTime);
 
     // Faculty can start attendance 5 mins before class
@@ -128,9 +137,7 @@ export const generateQR = async (req, res) => {
     }
 
     // Create real class start/end timestamps
-
     const sessionStart = new Date(nowIST);
-
     sessionStart.setHours(
       parseInt(todaySchedule.startTime.split(":")[0]),
       parseInt(todaySchedule.startTime.split(":")[1]),
@@ -139,7 +146,6 @@ export const generateQR = async (req, res) => {
     );
 
     const sessionEndsAt = new Date(nowIST);
-
     sessionEndsAt.setHours(
       parseInt(todaySchedule.endTime.split(":")[0]),
       parseInt(todaySchedule.endTime.split(":")[1]),
@@ -153,19 +159,14 @@ export const generateQR = async (req, res) => {
     const qrCode = crypto.randomBytes(32).toString("hex");
 
     const validFrom = getISTDate();
-
-    // 🔥 UPDATED: QR valid for only 10 seconds
     const validUntil = new Date(validFrom.getTime() + 30 * 1000);
 
     const qrSession = await QRSession.create({
       class: classId,
       qrCode,
       createdBy: req.user._id,
-
-      // 🔥 ADDED: fixed session window
       sessionStart,
       sessionEndsAt,
-
       validFrom,
       validUntil,
       isActive: true,
@@ -178,9 +179,6 @@ export const generateQR = async (req, res) => {
         classId,
       }),
     );
-
-    console.log("VALID FROM:", validFrom);
-    console.log("VALID UNTIL:", validUntil);
 
     res.json({
       sessionId: qrSession._id,
@@ -196,32 +194,30 @@ export const generateQR = async (req, res) => {
 
 export const markAttendance = async (req, res) => {
   try {
-    const { sessionId, qrCode } = req.body;
+    const { sessionId, qrCode, biometricAssertion } = req.body;
 
     const qrSession = await QRSession.findById(sessionId).populate("class");
 
-    // 🔐 QR must exist and be active
-    if (!qrSession)
+    // QR must exist and be active
+    if (!qrSession || !qrSession.isActive)
       return res.status(400).json({
-        message: "QR session not found",
+        message: "QR is invalid or expired",
       });
 
-    const now = getISTDate(); // 🔥 NEW: Check fixed 15-minute attendance window
+    const now = getISTDate();
+
+    // Check fixed attendance window
     if (now < qrSession.sessionStart || now > qrSession.sessionEndsAt) {
       qrSession.isActive = false;
       await qrSession.save();
-
       return res.status(400).json({ message: "Attendance session expired" });
     }
 
     // QR value must match
     if (qrSession.qrCode !== qrCode)
       return res.status(400).json({ message: "Invalid QR code" });
-    console.log("NOW:", now);
-    console.log("DB VALID FROM:", qrSession.validFrom);
-    console.log("DB VALID UNTIL:", qrSession.validUntil);
 
-    // 🔥 Strict 10-second QR validation
+    // Strict 30-second QR validation
     if (now < qrSession.validFrom || now > qrSession.validUntil) {
       return res
         .status(400)
@@ -236,7 +232,6 @@ export const markAttendance = async (req, res) => {
 
     // Prevent duplicate attendance (per day)
     const today = getISTDate();
-
     today.setHours(0, 0, 0, 0);
 
     const existingAttendance = await Attendance.findOne({
@@ -250,40 +245,40 @@ export const markAttendance = async (req, res) => {
         .status(400)
         .json({ message: "Attendance already marked for today" });
 
+    // ===== Biometric verification — OPTIONAL for now (Option A rollout) =====
+    let verifiedWithBiometric = false;
+
+    if (biometricAssertion) {
+      try {
+        await verifyAuthenticationAssertion({
+          userId: req.user._id,
+          sessionId,
+          assertionResponse: biometricAssertion,
+        });
+        verifiedWithBiometric = true;
+      } catch (err) {
+        // They attempted it and it failed — reject rather than silently
+        // falling back, since that could mask a real problem.
+        return res.status(401).json({ message: err.message });
+      }
+    }
+    // If biometricAssertion wasn't sent at all, proceed without it —
+    // this is what makes it optional. To make it mandatory later, change
+    // the block above to return a 400 when biometricAssertion is missing.
+    // =========================================================================
+
     const attendance = await Attendance.create({
       class: qrSession.class._id,
       student: req.user._id,
       date: getISTDate(),
       status: "present",
-      markedBy: "qr",
+      markedBy: verifiedWithBiometric ? "qr+biometric" : "qr",
     });
+
     // ================= CACHE INVALIDATION =================
-
-    // Delete all cached class analytics pages
-
-    const classAnalyticsKeys = await redisClient.keys(
-      `classAnalytics:${qrSession.class._id}:*`,
-    );
-
-    if (classAnalyticsKeys.length > 0) {
-      await redisClient.del(...classAnalyticsKeys);
-    }
-
-    // Delete student analytics cache
-
+    await deleteByPattern(`classAnalytics:${qrSession.class._id}:*`);
     await redisClient.del(`studentAnalytics:${req.user._id}`);
-    // ================= ATTENDANCE HISTORY CACHE =================
-
-    const attendanceHistoryKeys = await redisClient.keys("attendanceHistory:*");
-
-    if (attendanceHistoryKeys.length > 0) {
-      await redisClient.del(...attendanceHistoryKeys);
-    }
-
-    console.log("Redis cache invalidated");
-
-    console.log("Analytics cache invalidated");
-
+    await deleteByPattern("attendanceHistory:*");
     // =====================================================
 
     qrSession.attendees.push({
@@ -307,10 +302,6 @@ export const getAttendanceHistory = async (req, res) => {
   try {
     const classId = req.query.classId;
 
-    // 🔥 PAGINATION PARAMETERS
-    // page = current page number
-    // limit = number of records per page
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     let cacheKey;
@@ -324,21 +315,15 @@ export const getAttendanceHistory = async (req, res) => {
     }
 
     const cachedData = await redisClient.get(cacheKey);
-
     if (cachedData) {
-      console.log("Serving Attendance History From Redis");
-
       return res.json(JSON.parse(cachedData));
     }
 
-    // skip tells MongoDB how many records to skip
     const skip = (page - 1) * limit;
-
     let query = {};
 
     if (req.user.role === "student") {
       query = { student: req.user._id };
-
       if (classId) query.class = classId;
     } else if (req.user.role === "faculty") {
       if (!classId)
@@ -347,7 +332,6 @@ export const getAttendanceHistory = async (req, res) => {
           .json({ message: "classId is required for faculty" });
 
       const classDoc = await Class.findById(classId);
-
       if (!classDoc || classDoc.faculty.toString() !== req.user._id.toString())
         return res.status(403).json({ message: "Not authorized" });
 
@@ -356,12 +340,7 @@ export const getAttendanceHistory = async (req, res) => {
       query.class = classId;
     }
 
-    // 🔥 TOTAL RECORDS COUNT
-    // Needed to calculate total pages
-
     const totalRecords = await Attendance.countDocuments(query);
-
-    // 🔥 PAGINATED QUERY
 
     const attendance = await Attendance.find(query)
       .populate("student", "name studentId")
@@ -370,15 +349,10 @@ export const getAttendanceHistory = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    // 🔥 PAGINATED RESPONSE
-
     const responseData = {
       attendance,
-
       currentPage: page,
-
       totalPages: Math.ceil(totalRecords / limit),
-
       totalRecords,
     };
 

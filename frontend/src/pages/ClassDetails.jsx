@@ -2,14 +2,9 @@
 
 import { useState, useEffect, useContext, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { QrCode, Users, Calendar, BarChart3, UserPlus } from "lucide-react";
+import { QrCode, Users, Calendar, BarChart3, UserPlus, ClipboardCheck } from "lucide-react"; // added ClipboardCheck
 import axios from "axios";
 import AuthContext from "../context/AuthContext";
-
-// What does this component do?
-// This component displays detailed information about a specific class, including its name, code, department, semester, schedule, and enrolled students.
-// It allows faculty members to generate a QR code for attendance marking and provides links to view analytics and enroll students.
-// It fetches class details from the backend API based on the class ID from the URL parameters.
 
 const ClassDetails = () => {
   const { id } = useParams();
@@ -20,21 +15,12 @@ const ClassDetails = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  const qrIntervalRef = useRef(null); // stores 10-second QR interval
-  const qrTimeoutRef = useRef(null); // stores 15-minute session timeout
-
-  /* React re-renders components often.
-     If you store an interval ID in a normal variable, it gets lost on re-render.
-     useRef solves this. */
-
-  /* I used setInterval to regenerate the QR every 10 seconds,
-     stored the interval in useRef,
-     and cleaned it up properly using useEffect to avoid memory leaks. */
+  const qrIntervalRef = useRef(null);
+  const qrTimeoutRef = useRef(null);
 
   useEffect(() => {
     fetchClassDetails();
 
-    // Cleanup interval & timeout when component unmounts
     return () => {
       if (qrIntervalRef.current) {
         clearInterval(qrIntervalRef.current);
@@ -44,8 +30,6 @@ const ClassDetails = () => {
       }
     };
   }, [id]);
-
-  //An interval ID is a unique identifier (a number or object) that JavaScript returns when you start a repeating timer using setInterval(). You can use this ID to stop the timer later with clearInterval().
 
   const fetchClassDetails = async () => {
     try {
@@ -62,7 +46,6 @@ const ClassDetails = () => {
     }
   };
 
-  // Generates QR ONCE
   const generateQR = async () => {
     try {
       const { data } = await axios.post(
@@ -72,32 +55,27 @@ const ClassDetails = () => {
 
       setQrData(data);
 
-      return data; // ← ADD THIS
+      return data;
     } catch (error) {
       console.error("Error generating QR:", error);
       alert(error.response?.data?.message || "Failed to generate QR code");
       stopAutoQR();
 
-      return null; // ← ADD THIS
+      return null;
     }
   };
 
-  // Starts a FIXED 15-minute attendance session
   const startAutoQR = async () => {
     setGenerating(true);
 
-    // Generate first QR immediately
-    // Generate first QR immediately
     const qrResponse = await generateQR();
 
     if (!qrResponse) return;
 
-    // Clear old interval if exists
     if (qrIntervalRef.current) {
       clearInterval(qrIntervalRef.current);
     }
 
-    // Clear old timeout if exists
     if (qrTimeoutRef.current) {
       clearTimeout(qrTimeoutRef.current);
     }
@@ -105,7 +83,7 @@ const ClassDetails = () => {
     qrIntervalRef.current = setInterval(() => {
       generateQR();
     }, 30 * 1000);
-    // ⏱️ Stop QR generation automatically after 15 minutes
+
     const stopTime = new Date(qrResponse.sessionEndsAt);
     const remainingTime = stopTime.getTime() - new Date().getTime();
 
@@ -118,7 +96,6 @@ const ClassDetails = () => {
     setGenerating(false);
   };
 
-  // Stops QR regeneration manually or automatically
   const stopAutoQR = () => {
     if (qrIntervalRef.current) {
       clearInterval(qrIntervalRef.current);
@@ -183,6 +160,17 @@ const ClassDetails = () => {
               <UserPlus className="h-5 w-5 mr-2" />
               Enroll Students
             </Link>
+
+            {/* NEW: faculty-only spot check entry point */}
+            {user.role === "faculty" && (
+              <Link
+                to={`/classes/${id}/spotcheck`}
+                className="flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+              >
+                <ClipboardCheck className="h-5 w-5 mr-2" />
+                Spot Check
+              </Link>
+            )}
           </div>
         </div>
 

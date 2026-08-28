@@ -1,21 +1,33 @@
 // frontend/src/pages/Profile.jsx
-import { useContext } from 'react';
-import { User, Mail, Award, Calendar } from 'lucide-react';
+import { useContext, useState } from 'react';
+import { User, Mail, Award, Calendar, Fingerprint } from 'lucide-react'; // added Fingerprint
 import AuthContext from '../context/AuthContext';
-
+import { enrollDevice } from '../utils/webauthn'; // NEW
 
 //What does this component do?
 // This component displays the profile information of the currently logged-in user.
 // It fetches user data from the AuthContext and presents details such as name, email, role, student ID, department, semester, and account creation
 //  date.
 // It provides a clean and organized layout for users to view their personal information.
-
-//role of useContext here:
-// The useContext hook is used to access the AuthContext, which holds the authenticated user's information.
-
+// NEW: it also lets the user enroll this device for biometric attendance verification.
 
 const Profile = () => {
   const { user } = useContext(AuthContext);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollMessage, setEnrollMessage] = useState('');
+
+  const handleEnroll = async () => {
+    setEnrolling(true);
+    setEnrollMessage('');
+    try {
+      await enrollDevice();
+      setEnrollMessage('Device enrolled successfully. You can now use it to verify attendance.');
+    } catch (err) {
+      setEnrollMessage(err.message || 'Enrollment failed. Please try again.');
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -77,7 +89,7 @@ const Profile = () => {
             </div>
           )}
 
-          <div className="pt-4">
+          <div className="border-b pb-4">
             <div className="flex items-center text-gray-700">
               <Calendar className="h-5 w-5 mr-3 text-gray-500" />
               <div>
@@ -86,6 +98,44 @@ const Profile = () => {
               </div>
             </div>
           </div>
+
+          {/* NEW: biometric device enrollment */}
+          <div className="pt-2">
+            <div className="flex items-center text-gray-700 mb-3">
+              <Fingerprint className="h-5 w-5 mr-3 text-gray-500" />
+              <div>
+                <p className="text-sm text-gray-500">Biometric verification</p>
+                <p className="font-medium">
+                  {user?.webauthnCredentials?.length
+                    ? `${user.webauthnCredentials.length} device(s) enrolled`
+                    : 'No device enrolled yet'}
+                </p>
+              </div>
+            </div>
+
+            {user?.webauthnCredentials?.length > 0 && (
+              <ul className="ml-8 mb-3 text-sm text-gray-600 list-disc list-inside">
+                {user.webauthnCredentials.map((c, i) => (
+                  <li key={c.credentialID || i}>
+                    {c.label || 'My device'} — added{' '}
+                    {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              onClick={handleEnroll}
+              disabled={enrolling}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {enrolling ? 'Enrolling…' : 'Set up biometric verification on this device'}
+            </button>
+
+            {enrollMessage && (
+              <p className="mt-2 text-sm text-gray-600">{enrollMessage}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -93,4 +143,3 @@ const Profile = () => {
 };
 
 export default Profile;
-

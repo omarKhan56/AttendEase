@@ -2,24 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import axios from 'axios'; // to send HTTP requests and send attendance data to backend
+import axios from 'axios';
 import { CheckCircle, XCircle, QrCode } from 'lucide-react';
+import { getBiometricAssertion } from '../utils/webauthn';
 
 const MarkAttendance = () => {
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
-
-  //What does this component does:
-  // This component allows students to mark their attendance by scanning a QR code.
-  // It uses the Html5QrcodeScanner library to access the device camera and scan QR codes.
-  // Upon successful scan, it sends the scanned data to the backend API to record attendance.
-  // It provides feedback to the user about the success or failure of the attendance marking process.
-
-  //role of useEffect here:
-  // The useEffect hook is used to initialize and clean up the QR code scanner.
-  // When the scanning state changes to true, it sets up the scanner and starts rendering it.
-  // When the component unmounts or scanning stops, it clears the scanner to free up resources.
 
   useEffect(() => {
     let scanner;
@@ -35,8 +25,7 @@ const MarkAttendance = () => {
 
     return () => {
       if (scanner) {
-        scanner.clear(); // Stop the scanner and clear resources 
-                         // It turns off the camera && removes the scanner UI
+        scanner.clear();
       }
     };
   }, [scanning]);
@@ -44,10 +33,21 @@ const MarkAttendance = () => {
   const onScanSuccess = async (decodedText) => {
     try {
       const qrData = JSON.parse(decodedText);
-      
+
+      // Try biometric verification, but don't block attendance if it fails
+      // or if the student hasn't enrolled a device yet (Option A rollout —
+      // this is optional for now, will become mandatory later).
+      let biometricAssertion;
+      try {
+        biometricAssertion = await getBiometricAssertion(qrData.sessionId);
+      } catch (err) {
+        biometricAssertion = undefined;
+      }
+
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/attendance/mark`, {
         sessionId: qrData.sessionId,
-        qrCode: qrData.qrCode
+        qrCode: qrData.qrCode,
+        biometricAssertion,
       });
 
       setResult({ success: true, message: response.data.message });
@@ -133,9 +133,8 @@ const MarkAttendance = () => {
           <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
             <li>Make sure you are in the correct class session</li>
             <li>Position your device camera to scan the QR code</li>
-            <li>Keep the camera steady until the scan completes</li>
+            <li>If you've set up biometric verification, confirm with your fingerprint/Face ID when prompted</li>
             <li>You can only mark attendance once per session</li>
-            <li>QR codes expire after 15 minutes</li>
           </ul>
         </div>
       </div>

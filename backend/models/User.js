@@ -122,7 +122,21 @@ const userSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Class'
       }
-    ]
+    ],
+
+    // ===== NEW: WebAuthn biometric credentials =====
+    webauthnCredentials: [
+      {
+        credentialID: { type: String, required: true },
+        publicKey: { type: String, required: true },
+        counter: { type: Number, required: true, default: 0 },
+        deviceType: { type: String },
+        backedUp: { type: Boolean, default: false },
+        transports: [{ type: String }],
+        label: { type: String, default: 'My device' },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true

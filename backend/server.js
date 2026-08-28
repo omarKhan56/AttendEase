@@ -9,6 +9,8 @@ import authRoutes from "./routes/authRoutes.js";
 import classRoutes from "./routes/classRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import webauthnRoutes from "./routes/webauthnRoutes.js";     // NEW
+import spotCheckRoutes from "./routes/spotCheckRoutes.js";   // NEW
 
 dotenv.config();
 
@@ -19,12 +21,12 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-
-
 app.use("/api/auth", authRoutes);
 app.use("/api/classes", classRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/webauthn", webauthnRoutes);     // NEW
+app.use("/api/spotcheck", spotCheckRoutes);   // NEW
 
 app.get("/", (req, res) => {
   res.json({
